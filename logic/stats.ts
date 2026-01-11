@@ -2,33 +2,43 @@
 import { PlayerStats } from '../types';
 
 export const INITIAL_STATS: PlayerStats = {
-  maxHP: 1000, 
-  hp: 1000,
-  hpRegen: 1, // Khởi điểm hồi 1 HP/s
+  maxHP: 500, 
+  hp: 500,
+  hpRegen: 1,
 
-  maxArmor: 500, 
-  currentArmor: 500,
-  armor: 5, // Khởi điểm giảm 5 sát thương nhận vào
-  armorRegen: 1, // Khởi điểm hồi 1 Giáp/s
+  maxArmor: 200, 
+  currentArmor: 200,
+  armor: 0, 
+  armorRegen: 1,
 
-  moveSpeed: 220, 
-  gunDamageMult: 0.8, 
-  gunCooldownMult: 1.0, gunAmount: 1, gunPierce: 0, gunSpeed: 1.0,
-  bookDamageMult: 0.8, 
-  bookCooldownMult: 1.0, bookAmount: 1, bookArea: 0.8, bookSpeed: 1.0,
+  moveSpeed: 300,
+
+  // --- GUN STATS ---
+  gunDamageMult: 1.0, 
+  gunCooldownMult: 1.0, 
+  gunAmount: 1,
+  gunPierce: 0,
+  gunSpeed: 1.0,
+
+  // --- BOOK STATS ---
+  bookDamageMult: 1.0, 
+  bookCooldownMult: 1.0, 
+  bookAmount: 1, 
+  bookArea: 1.0, 
+  bookSpeed: 1.0, 
   
-  // Lightning Stats
+  // --- LIGHTNING STATS ---
   lightningDamageMult: 1.0, 
   lightningCooldownMult: 1.0, 
-  lightningAmount: 1, 
+  lightningAmount: 1, // Cần nâng cấp để mở khóa
   lightningArea: 1.0,
 
-  // Nova Blast Stats (Now Unlocked by Default)
+  // --- NOVA BLAST STATS ---
   novaUnlocked: true,
   novaDamageMult: 1.0,
   novaCooldownMult: 1.0,
   novaArea: 1.0,
 
-  magnetRange: 150, 
+  magnetRange: 150,
   level: 1, exp: 0, expToNext: 100, kills: 0
 };

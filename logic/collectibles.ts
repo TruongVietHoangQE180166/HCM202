@@ -89,14 +89,17 @@ export const updateCollectibles = (
                 next.maxHP += extraMaxHP;
                 next.maxArmor += extraMaxArmor;
                 
-                // FULL RESTORE (Modified)
-                next.hp = next.maxHP; 
-                next.currentArmor = next.maxArmor;
+                // PARTIAL RESTORE: Only restore 25% of Max stats instead of Full Restore
+                const healAmt = Math.floor(next.maxHP * 0.25);
+                const armorAmt = Math.floor(next.maxArmor * 0.25);
+
+                next.hp = Math.min(next.maxHP, next.hp + healAmt); 
+                next.currentArmor = Math.min(next.maxArmor, next.currentArmor + armorAmt);
 
                 // Visual Text
                 floatingTexts.push({
                     id: Math.random().toString(), x: player.x, y: player.y - 60,
-                    text: 'HỒI PHỤC TOÀN DIỆN!', color: '#fbbf24', life: 2.0, vx: 0, vy: -2
+                    text: `LÊN CẤP! +${healAmt} HP`, color: '#fbbf24', life: 2.0, vx: 0, vy: -2
                 });
             }
             

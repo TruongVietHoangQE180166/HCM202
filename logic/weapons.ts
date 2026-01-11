@@ -30,7 +30,10 @@ export const updateGun = (
     if (nearest) {
       const baseAngle = Math.atan2((nearest as Enemy).y - player.y, (nearest as Enemy).x - player.x);
       const bulletCount = Math.max(1, stats.gunAmount);
-      const bulletSize = 14 * Math.max(1, stats.gunDamageMult * 0.8);
+      
+      // CAP SIZE: Logic preserved, but capped at 60px
+      const rawSize = 14 * Math.max(1, stats.gunDamageMult * 0.8);
+      const bulletSize = Math.min(rawSize, 60);
 
       createMuzzleFlash(particles, player.x, player.y, baseAngle);
 
@@ -137,8 +140,9 @@ export const updateLightning = (
            });
 
            // Enhanced Explosion
-           // Size now depends on Area AND Damage Multiplier (Intensity)
-           const explosionSize = (80 + (20 * stats.lightningDamageMult)) * stats.lightningArea;
+           // CAP SIZE: Logic preserved but capped at 400px
+           const rawSize = (80 + (20 * stats.lightningDamageMult)) * stats.lightningArea;
+           const explosionSize = Math.min(rawSize, 400);
            
            particles.push({
                id: Math.random().toString(), x: e.x, y: e.y, width:0, height:0,
@@ -172,7 +176,10 @@ export const updateBook = (
   const orbitalRadius = 160 * stats.bookArea;
   const bookCount = stats.bookAmount;
   const bookDamage = 15 * stats.bookDamageMult * dt * 8; 
-  const bookSize = 24 * stats.bookArea * Math.max(1, stats.bookDamageMult * 0.7);
+  
+  // CAP SIZE: Logic preserved but capped at 100px
+  const rawSize = 24 * stats.bookArea * Math.max(1, stats.bookDamageMult * 0.7);
+  const bookSize = Math.min(rawSize, 100);
 
   for(let i=0; i < bookCount; i++) {
       const angle = (gameTime * orbitalSpeed) + (i * (Math.PI * 2 / bookCount));
@@ -213,7 +220,8 @@ export const updateNova = (
     
     if (stats.novaUnlocked && weaponTimers.nova >= cooldown) {
         // 1. Config
-        const blastRadius = 250 * stats.novaArea;
+        // CAP SIZE: Logic preserved but capped at 650px radius
+        const blastRadius = Math.min(250 * stats.novaArea, 650);
         const damage = 80 * stats.novaDamageMult;
         
         // Calculate visual color based on damage multiplier (Ramping up heat)

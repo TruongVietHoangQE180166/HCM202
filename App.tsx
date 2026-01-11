@@ -236,7 +236,9 @@ const App: React.FC = () => {
 
     // 2. Enemy Spawning
     spawnTimerRef.current += dt;
-    const spawnInterval = Math.max(0.6, 2.0 - (s.level * 0.02) - (gameTimeRef.current * 0.0005));
+    // Increased interval bounds to spawn enemies less frequently
+    const spawnInterval = Math.max(1.0, 2.5 - (s.level * 0.015) - (gameTimeRef.current * 0.0004));
+    
     if (spawnTimerRef.current >= spawnInterval) {
       handleEnemySpawning(
         gameTimeRef.current,

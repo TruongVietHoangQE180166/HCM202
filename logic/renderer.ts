@@ -268,7 +268,10 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
       }
     });
 
-    const bookSize = 24 * stats.bookArea * Math.max(1, stats.bookDamageMult * 0.7);
+    // CAP SIZE: Logic preserved, max 100px
+    const rawBookSize = 24 * stats.bookArea * Math.max(1, stats.bookDamageMult * 0.7);
+    const bookSize = Math.min(rawBookSize, 100);
+
     const orbitalRadius = 160 * stats.bookArea;
     
     // MAGIC CIRCLE

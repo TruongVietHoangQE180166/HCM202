@@ -42,13 +42,13 @@ export const calculatePlayerDamage = (
 
 // --- WEIGHTED RARITY LOGIC ---
 const RARITY_WEIGHTS: Record<Rarity, number> = {
-    [Rarity.COMMON]: 40,
-    [Rarity.UNCOMMON]: 25,
-    [Rarity.RARE]: 15,
-    [Rarity.EPIC]: 10,
-    [Rarity.LEGENDARY]: 6,
-    [Rarity.MYTHIC]: 3,
-    [Rarity.GODLY]: 1
+    [Rarity.COMMON]: 25,      // Reduced (was 40)
+    [Rarity.UNCOMMON]: 25,    // Same
+    [Rarity.RARE]: 20,        // Increased (was 15)
+    [Rarity.EPIC]: 15,        // Increased (was 10)
+    [Rarity.LEGENDARY]: 10,   // Increased (was 6)
+    [Rarity.MYTHIC]: 6,       // Doubled (was 3)
+    [Rarity.GODLY]: 4         // Quadrupled (was 1)
 };
 
 const getRandomRarity = (): Rarity => {
