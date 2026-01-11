@@ -99,7 +99,7 @@ export const BUFFS: Buff[] = [
     effect: (s) => ({ ...s, bookAmount: s.bookAmount + 1, bookArea: s.bookArea + 0.5, bookDamageMult: s.bookDamageMult + 0.5 })
   },
 
-  // --- LIGHTNING BUFFS (NEW) ---
+  // --- LIGHTNING BUFFS ---
   {
     id: 'lightning_unlock',
     name: 'Triệu Hồi Sấm Sét',
@@ -131,6 +131,40 @@ export const BUFFS: Buff[] = [
     rarity: Rarity.GODLY,
     type: 'LIGHTNING_BUFF',
     effect: (s) => ({ ...s, lightningAmount: s.lightningAmount + 2, lightningCooldownMult: s.lightningCooldownMult * 0.8 })
+  },
+
+  // --- LOTUS BUFFS (NEW) ---
+  {
+    id: 'lotus_unlock',
+    name: 'LIÊN HOA NỘ',
+    description: 'Mở khóa: Đóa sen phát nổ & 4 cánh hoa truy kích',
+    rarity: Rarity.RARE,
+    type: 'LOTUS_BUFF',
+    effect: (s) => ({ ...s, lotusAmount: s.lotusAmount + 4 }) // Starts with 4 petals
+  },
+  {
+    id: 'lotus_area',
+    name: 'Đài Sen Lớn',
+    description: '+25% Phạm vi nổ của Sen',
+    rarity: Rarity.UNCOMMON,
+    type: 'LOTUS_BUFF',
+    effect: (s) => ({ ...s, lotusArea: s.lotusArea + 0.25 })
+  },
+  {
+    id: 'lotus_petals',
+    name: 'Mưa Cánh Hoa',
+    description: '+2 Cánh hoa bắn ra thêm',
+    rarity: Rarity.EPIC,
+    type: 'LOTUS_BUFF',
+    effect: (s) => ({ ...s, lotusAmount: s.lotusAmount + 2 })
+  },
+  {
+    id: 'lotus_godly',
+    name: 'QUỐC HOA VIỆT NAM',
+    description: 'X2 Sát thương, +4 Cánh hoa, +50% Phạm vi (GODLY)',
+    rarity: Rarity.GODLY,
+    type: 'LOTUS_BUFF',
+    effect: (s) => ({ ...s, lotusArea: s.lotusArea + 0.5, lotusDamageMult: s.lotusDamageMult + 1.0, lotusAmount: s.lotusAmount + 4 })
   }
 ];
 

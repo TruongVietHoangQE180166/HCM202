@@ -9,16 +9,16 @@ interface TutorialModalProps {
 const TutorialModal: React.FC<TutorialModalProps> = ({ onClose }) => {
   return (
     <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white border-4 border-black neo-shadow w-[900px] h-[80vh] flex flex-col">
-        <div className="bg-[oklch(0.9680_0.2110_109.7692)] text-black px-4 py-2 flex justify-between items-center border-b-4 border-black">
+      <div className="bg-white border-4 border-black neo-shadow w-full max-w-[900px] h-full max-h-[80vh] flex flex-col">
+        <div className="bg-[oklch(0.9680_0.2110_109.7692)] text-black px-4 py-2 flex justify-between items-center border-b-4 border-black shrink-0">
           <span className="font-mono font-bold uppercase tracking-widest">MANUAL.PDF</span>
           <button onClick={onClose} className="hover:bg-red-500 hover:text-white px-2 font-black border-2 border-black bg-white flex items-center gap-2 transition-colors">
             <X className="w-4 h-4" /> ĐÓNG
           </button>
         </div>
 
-        <div className="p-8 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-12">
+        <div className="p-4 md:p-8 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div>
               <h3 className="text-3xl font-black mb-6 uppercase flex items-center gap-3">
                 <Gamepad2 className="w-8 h-8" strokeWidth={2.5} /> Điều Khiển

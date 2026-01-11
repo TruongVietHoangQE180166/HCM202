@@ -41,7 +41,7 @@ export const updateGun = (
               id: Math.random().toString(),
               x: player.x, y: player.y,
               width: bulletSize, height: bulletSize,
-              vx: Math.cos(finalAngle) * 900, vy: Math.sin(finalAngle) * 900,
+              vx: Math.cos(finalAngle) * 1200, vy: Math.sin(finalAngle) * 1200, // Speed increased from 900 to 1200 for nicer trails
               damage: 20 * stats.gunDamageMult,
               life: 1.5, rotation: finalAngle, type: 'PLAYER_BULLET',
               pierce: stats.gunPierce,
@@ -129,7 +129,7 @@ export const updateLightning = (
            particles.push({
                id: Math.random().toString(), x: e.x, y: e.y, width:0, height:0,
                vx:0, vy:0, life: 0.35, maxLife: 0.35, 
-               color: '#67e8f9', // Bright Cyan
+               color: '#22d3ee', // Bright Cyan (Tailwind Cyan-400)
                size: 10 * stats.lightningArea,
                type: 'LIGHTNING', drag: 0, growth: 0, 
                path: path,
@@ -137,15 +137,20 @@ export const updateLightning = (
            });
 
            // Enhanced Explosion
+           // Size now depends on Area AND Damage Multiplier (Intensity)
+           const explosionSize = (80 + (20 * stats.lightningDamageMult)) * stats.lightningArea;
+           
            particles.push({
                id: Math.random().toString(), x: e.x, y: e.y, width:0, height:0,
-               vx:0, vy:0, life:0.4, maxLife:0.4, color: '#67e8f9', size: 80 * stats.lightningArea,
+               vx:0, vy:0, life:0.4, maxLife:0.4, 
+               color: '#06b6d4', // Deep Electric Cyan (Cyan-500)
+               size: explosionSize,
                type: 'SHOCKWAVE', drag:0, growth: 150
            });
            // Sparks
-           createSimpleParticles(particles, e.x, e.y, '#bae6fd', 15);
+           createSimpleParticles(particles, e.x, e.y, '#67e8f9', 15);
 
-           createHitEffect(particles, floatingTexts, e.x, e.y, '#22d3ee', dmg, true);
+           createHitEffect(particles, floatingTexts, e.x, e.y, '#06b6d4', dmg, true);
         });
         
         if (targets.length > 0) shakeManager.shake(5 * targets.length);
@@ -192,3 +197,78 @@ export const updateBook = (
       });
   }
 };
+
+export const updateLotus = (
+    dt: number,
+    weaponTimers: { lotus: number },
+    stats: PlayerStats,
+    player: PlayerRef,
+    enemies: Enemy[],
+    projectiles: Projectile[],
+    particles: Particle[],
+    floatingTexts: FloatingText[],
+    shakeManager: ScreenShake
+) => {
+    weaponTimers.lotus += dt;
+    const cooldown = 3.5 * stats.lotusCooldownMult;
+    
+    if (stats.lotusAmount > 0 && weaponTimers.lotus >= cooldown) {
+        // 1. Trigger Area Bloom Effect
+        const bloomSize = 250 * stats.lotusArea;
+        const damage = 60 * stats.lotusDamageMult;
+
+        // Visual Bloom (Mandala)
+        particles.push({
+            id: Math.random().toString(),
+            x: player.x, y: player.y,
+            width: 0, height: 0,
+            vx: 0, vy: 0,
+            life: 1.0, maxLife: 1.0,
+            color: '#f472b6', // Pink-400
+            size: bloomSize,
+            type: 'LOTUS_BLOOM',
+            drag: 0, growth: 20,
+            rotation: Math.random() * Math.PI,
+            vRot: 1.0 // Rotate effect
+        });
+
+        shakeManager.shake(15);
+
+        // 2. Deal Damage in Area (AOE)
+        enemies.forEach(e => {
+            if (getDistance(player.x, player.y, e.x, e.y) < bloomSize) {
+                e.hp -= damage;
+                e.flashTime = 0.2;
+                // Push back hard
+                if (e.aiType !== 'BOSS') {
+                     const angle = Math.atan2(e.y - player.y, e.x - player.x);
+                     e.x += Math.cos(angle) * 100;
+                     e.y += Math.sin(angle) * 100;
+                }
+                createHitEffect(particles, floatingTexts, e.x, e.y, '#ec4899', damage, true);
+            }
+        });
+
+        // 3. Spawn Petal Projectiles (Secondary Attack)
+        const petalCount = stats.lotusAmount;
+        for(let i=0; i<petalCount; i++) {
+            const angle = (Math.PI * 2 / petalCount) * i;
+            projectiles.push({
+                id: Math.random().toString(),
+                x: player.x, y: player.y,
+                width: 18, height: 18,
+                vx: Math.cos(angle) * 500, vy: Math.sin(angle) * 500,
+                damage: damage * 0.5, // Petals deal 50% of explosion damage
+                life: 3.0,
+                rotation: angle,
+                type: 'LOTUS_PETAL',
+                pierce: 1,
+                color: '#fbcfe8',
+                isHoming: true,
+                homingForce: 3.0
+            });
+        }
+
+        weaponTimers.lotus = 0;
+    }
+}

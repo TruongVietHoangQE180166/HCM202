@@ -19,6 +19,12 @@ export const INITIAL_STATS: PlayerStats = {
   lightningAmount: 1, 
   lightningArea: 1.0,
 
+  // Lotus Stats (New Skill)
+  lotusDamageMult: 1.0,
+  lotusCooldownMult: 1.0,
+  lotusAmount: 0, // Starts locked
+  lotusArea: 1.0,
+
   magnetRange: 150, 
   level: 1, exp: 0, expToNext: 100, kills: 0
 };

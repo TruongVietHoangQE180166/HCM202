@@ -4,8 +4,10 @@ import {
   GameState, PlayerStats, Enemy, Projectile, Particle, ExpGem, HealthDrop,
   Buff, Question, FloatingText, GameHistory 
 } from './types';
-import { BUFFS, QUESTIONS, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
-import { checkCircleCollision, getRandomRange, getDistance, ScreenShake } from './utils';
+import { QUESTIONS, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
+import { getRandomRange, ScreenShake } from './utils';
+
+// Components
 import HUD from './components/HUD';
 import LevelUpModal from './components/LevelUpModal';
 import QuizModal from './components/QuizModal';
@@ -16,17 +18,21 @@ import HistoryModal from './components/HistoryModal';
 import TutorialModal from './components/TutorialModal';
 import PolicyModal from './components/PolicyModal';
 
-// Logic Modules
+// Hooks & Logic
+import { useInput } from './hooks/useInput';
+import { loadGameHistory, saveGameHistory } from './logic/storage';
+import { calculatePlayerDamage, generateLevelUpOptions, applyQuizResult } from './logic/gameRules';
 import { INITIAL_STATS } from './logic/stats';
 import { createHitEffect, updateParticles, updateFloatingTexts } from './logic/particles';
 import { updatePlayerMovement, updateZoneLogic } from './logic/player';
-import { updateGun, updateLightning, updateBook } from './logic/weapons';
+import { updateGun, updateLightning, updateBook, updateLotus } from './logic/weapons';
 import { handleEnemySpawning, updateEnemies } from './logic/enemies';
 import { updateProjectiles } from './logic/projectiles';
 import { updateCollectibles } from './logic/collectibles';
 import { renderGame } from './logic/renderer';
 
 const App: React.FC = () => {
+  // --- STATE ---
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
   const [timer, setTimer] = useState(0);
   const [stats, setStats] = useState<PlayerStats>(INITIAL_STATS);
@@ -39,11 +45,12 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<GameHistory[]>([]);
   const [loadingProgress, setLoadingProgress] = useState(0);
 
-  // Gameplay States
+  // Gameplay UI States
   const [levelUpOptions, setLevelUpOptions] = useState<Buff[]>([]);
   const [selectedBuff, setSelectedBuff] = useState<Buff | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
 
+  // --- REFS ---
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number | undefined>(undefined);
   const lastTimeRef = useRef<number>(0);
@@ -57,35 +64,33 @@ const App: React.FC = () => {
   const particlesRef = useRef<Particle[]>([]);
   const floatingTextsRef = useRef<FloatingText[]>([]);
   
-  const keysRef = useRef<{ [key: string]: boolean }>({});
   const shakeManager = useRef(new ScreenShake());
   const gameTimeRef = useRef(0);
   const spawnTimerRef = useRef(0);
-  const weaponTimersRef = useRef({ gun: 0, book: 0, lightning: 0 });
+  // Added lotus timer
+  const weaponTimersRef = useRef({ gun: 0, book: 0, lightning: 0, lotus: 0 });
   const iFrameRef = useRef(0);
   const statsRef = useRef<PlayerStats>(INITIAL_STATS);
   
   const zoneRef = useRef({ active: false, radius: 0, center: { x: 0, y: 0 }, lastTriggeredLevel: 0 });
   const bossFlags = useRef({ boss1: false, boss2: false, boss3: false });
 
+  // Custom Hooks
+  const keysRef = useInput();
+
+  // Sync state ref for render loop
   useEffect(() => { statsRef.current = stats; }, [stats]);
 
+  // Load History on Mount
   useEffect(() => {
-    const saved = localStorage.getItem('gameHistory');
-    if (saved) { try { setHistory(JSON.parse(saved)); } catch (e) { console.error(e); } }
+    setHistory(loadGameHistory());
   }, []);
 
-  const saveToHistory = (s: PlayerStats, time: number) => {
-    const newEntry: GameHistory = {
-      id: Math.random().toString(),
-      date: new Date().toLocaleDateString('vi-VN'),
-      kills: s.kills,
-      level: s.level,
-      timeSurvived: `${Math.floor(time / 60)}:${Math.floor(time % 60).toString().padStart(2, '0')}`
-    };
-    const updated = [newEntry, ...history].slice(0, 10);
+  // --- ACTIONS ---
+
+  const handleSaveHistory = (finalStats: PlayerStats, time: number) => {
+    const updated = saveGameHistory(history, finalStats, time);
     setHistory(updated);
-    localStorage.setItem('gameHistory', JSON.stringify(updated));
   };
 
   const startLoading = (nextState: GameState, delay = 2000) => {
@@ -112,6 +117,8 @@ const App: React.FC = () => {
     setStats(INITIAL_STATS);
     setActiveBoss(null);
     gameTimeRef.current = 0;
+    
+    // Reset Entities
     enemiesRef.current = [];
     projectilesRef.current = [];
     gemsRef.current = [];
@@ -119,51 +126,40 @@ const App: React.FC = () => {
     particlesRef.current = [];
     floatingTextsRef.current = [];
     playerRef.current = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, size: 40 };
-    weaponTimersRef.current = { gun: 0, book: 0, lightning: 0 };
+    weaponTimersRef.current = { gun: 0, book: 0, lightning: 0, lotus: 0 };
     zoneRef.current = { active: false, radius: 0, center: {x:0, y:0}, lastTriggeredLevel: 0 };
     bossFlags.current = { boss1: false, boss2: false, boss3: false };
+    
     lastTimeRef.current = performance.now();
     startLoading(GameState.PLAYING);
   };
 
   const handleGameOver = () => {
-    saveToHistory(statsRef.current, gameTimeRef.current);
+    handleSaveHistory(statsRef.current, gameTimeRef.current);
     startLoading(GameState.GAMEOVER, 1500);
   };
 
   const backToMenu = () => { startLoading(GameState.MENU, 1000); };
 
+  // Core Damage Logic
   const takeDamage = useCallback((amount: number) => {
     if (iFrameRef.current > 0) return;
-    setStats(prev => {
-      let dmg = amount;
-      if (prev.currentArmor > 0) {
-        const absorb = Math.min(prev.currentArmor, dmg);
-        prev.currentArmor -= absorb;
-        dmg -= absorb;
-      }
-      if (dmg > 0) {
-        const actualDmg = Math.max(1, dmg - prev.armor);
-        prev.hp -= actualDmg;
-        shakeManager.current.shake(actualDmg * 0.5);
-        createHitEffect(particlesRef.current, floatingTextsRef.current, playerRef.current.x, playerRef.current.y, '#ef4444', actualDmg, true);
-      }
-      return { ...prev };
-    });
+    
+    setStats(prev => calculatePlayerDamage(
+        prev, 
+        amount, 
+        shakeManager.current, 
+        playerRef.current, 
+        particlesRef.current, 
+        floatingTextsRef.current
+    ));
+    
     iFrameRef.current = 0.5;
   }, []);
 
+  // Level Up Logic
   const handleLevelUp = useCallback(() => {
-    const distinctOptions: Buff[] = [];
-    const usedIndices = new Set<number>();
-    while (distinctOptions.length < 3 && usedIndices.size < BUFFS.length) {
-       const idx = Math.floor(Math.random() * BUFFS.length);
-       if (!usedIndices.has(idx)) {
-         usedIndices.add(idx);
-         distinctOptions.push(BUFFS[idx]);
-       }
-    }
-    setLevelUpOptions(distinctOptions);
+    setLevelUpOptions(generateLevelUpOptions());
     setGameState(GameState.LEVEL_UP);
   }, []);
 
@@ -175,14 +171,12 @@ const App: React.FC = () => {
   };
 
   const handleQuizResult = (correct: boolean) => {
-     if (correct && selectedBuff) {
-       setStats(prev => selectedBuff.effect(prev));
-     } else {
-       setStats(prev => ({ ...prev, hp: Math.min(prev.maxHP, prev.hp + (prev.maxHP * 0.1)) }));
-     }
+     setStats(prev => applyQuizResult(prev, selectedBuff, correct));
      setGameState(GameState.PLAYING);
      lastTimeRef.current = performance.now();
   };
+
+  // --- GAME LOOP ---
 
   const update = useCallback((deltaTime: number) => {
     if (gameState !== GameState.PLAYING) return;
@@ -193,11 +187,11 @@ const App: React.FC = () => {
 
     const s = statsRef.current;
 
-    // --- ZONE LOGIC & PLAYER MOVEMENT ---
+    // 1. Player & Zone
     updateZoneLogic(s, zoneRef.current, playerRef.current, floatingTextsRef.current, dt);
     updatePlayerMovement(playerRef.current, keysRef.current, s, zoneRef.current, dt);
 
-    // --- ENEMY SPAWNING ---
+    // 2. Enemy Spawning
     spawnTimerRef.current += dt;
     const spawnInterval = Math.max(0.05, 0.5 - (s.level * 0.01) - (gameTimeRef.current * 0.0005));
     if (spawnTimerRef.current >= spawnInterval) {
@@ -211,15 +205,15 @@ const App: React.FC = () => {
       spawnTimerRef.current = 0;
     }
 
-    // --- WEAPONS ---
+    // 3. Weapons & Projectiles
     updateGun(dt, weaponTimersRef.current, s, playerRef.current, enemiesRef.current, projectilesRef.current, particlesRef.current);
     updateLightning(dt, weaponTimersRef.current, s, playerRef.current, enemiesRef.current, particlesRef.current, floatingTextsRef.current, shakeManager.current);
     updateBook(dt, gameTimeRef.current, s, playerRef.current, enemiesRef.current, particlesRef.current, floatingTextsRef.current);
+    updateLotus(dt, weaponTimersRef.current, s, playerRef.current, enemiesRef.current, projectilesRef.current, particlesRef.current, floatingTextsRef.current, shakeManager.current);
 
-    // --- PROJECTILES UPDATE ---
     projectilesRef.current = updateProjectiles(dt, projectilesRef.current, enemiesRef.current, playerRef.current, particlesRef.current, floatingTextsRef.current, takeDamage);
 
-    // --- ENEMIES UPDATE ---
+    // 4. Enemies
     updateEnemies(
       dt, 
       gameTimeRef.current, 
@@ -228,12 +222,12 @@ const App: React.FC = () => {
       projectilesRef.current, 
       particlesRef.current, 
       shakeManager.current,
-      takeDamage,
+      takeDamage, 
       iFrameRef.current
     );
     if (iFrameRef.current > 0) iFrameRef.current -= dt;
 
-    // --- DEATH CHECKS ---
+    // 5. Deaths & Drops
     enemiesRef.current.forEach(e => {
       if (e.hp <= 0) {
         if (e.aiType !== 'KAMIKAZE') {
@@ -259,7 +253,7 @@ const App: React.FC = () => {
     });
     enemiesRef.current = enemiesRef.current.filter(e => e.hp > 0);
 
-    // --- GEM / ITEM COLLECTION ---
+    // 6. Collectibles
     const { nextGems, nextHealth } = updateCollectibles(
         dt, 
         gemsRef.current, 
@@ -273,14 +267,13 @@ const App: React.FC = () => {
     gemsRef.current = nextGems;
     healthDropsRef.current = nextHealth;
 
-    // --- SYNC BOSS STATE ---
+    // 7. Sync & Cleanup
     if (activeBoss) {
         const bossRef = enemiesRef.current.find(e => e.id === activeBoss.id);
         if (bossRef) setActiveBoss({...bossRef}); 
         else setActiveBoss(null);
     }
     
-    // --- UPDATE EFFECTS ---
     particlesRef.current = updateParticles(particlesRef.current, dt);
     floatingTextsRef.current = updateFloatingTexts(floatingTextsRef.current, dt);
 
@@ -320,16 +313,13 @@ const App: React.FC = () => {
   }, [update, draw]);
 
   useEffect(() => {
-    const hkd = (e: KeyboardEvent) => keysRef.current[e.key.toLowerCase()] = true;
-    const hku = (e: KeyboardEvent) => keysRef.current[e.key.toLowerCase()] = false;
-    window.addEventListener('keydown', hkd); window.addEventListener('keyup', hku);
     requestRef.current = requestAnimationFrame(loop);
     return () => {
-      window.removeEventListener('keydown', hkd); window.removeEventListener('keyup', hku);
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
   }, [loop]);
 
+  // --- RENDER ---
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-white flex items-center justify-center font-sans">
       

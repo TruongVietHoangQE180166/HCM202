@@ -26,10 +26,10 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
   };
 
   return (
-    <div className="fixed inset-0 pointer-events-none select-none z-40 p-6 flex flex-col justify-between overflow-hidden font-sans">
+    <div className="fixed inset-0 pointer-events-none select-none z-40 p-6 font-sans">
       
       {/* TOP ROW */}
-      <div className="flex justify-between items-start w-full">
+      <div className="flex justify-between items-start w-full relative z-10">
         
         {/* PLAYER STATUS (Left) */}
         <div className="flex flex-col gap-3 w-80 pointer-events-auto">
@@ -48,7 +48,6 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
                   className="h-full bg-red-500 transition-all duration-300 absolute left-0 top-0" 
                   style={{ width: `${Math.max(0, hpPercent)}%` }} 
                 />
-                {/* Stripe overlay */}
                 <div className="absolute inset-0 opacity-20 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzjwqgABJNDt27cbIImC9AOw0wiV7Ip9QwAAAABJRU5ErkJggg==')]"></div>
               </div>
             </div>
@@ -119,7 +118,7 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
            </button>
 
            {!isStatsCollapsed && (
-             <div className="bg-white border-4 border-black neo-shadow w-72 p-4 transition-all animate-pop">
+             <div className="bg-white border-4 border-black neo-shadow w-72 p-4 transition-all animate-pop max-h-[50vh] overflow-y-auto">
                 <div className="text-[10px] font-black uppercase tracking-[0.2em] border-b-4 border-black pb-2 mb-3 text-center bg-gray-100">
                   THÔNG SỐ VŨ KHÍ
                 </div>
@@ -150,7 +149,7 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
                    </div>
                 </div>
 
-                {/* LIGHTNING (New) */}
+                {/* LIGHTNING */}
                 {stats.lightningAmount > 0 && (
                   <div className="mb-4 relative">
                      <div className="flex items-center gap-2 mb-2 text-cyan-600 border-b-2 border-cyan-100 pb-1">
@@ -161,6 +160,22 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
                         <MiniStat label="HỒI CHIÊU" value={`${Math.round((1/stats.lightningCooldownMult) * 100)}%`} />
                         <MiniStat label="PHẠM VI" value={`${Math.round(stats.lightningArea * 100)}%`} />
                         <MiniStat label="SỐ LƯỢNG" value={`x${stats.lightningAmount}`} />
+                     </div>
+                  </div>
+                )}
+
+                 {/* LOTUS (New) */}
+                {stats.lotusAmount > 0 && (
+                  <div className="mb-4 relative">
+                     <div className="flex items-center gap-2 mb-2 text-pink-600 border-b-2 border-pink-100 pb-1">
+                       {/* Flower icon replacement using Zap for now or maybe a custom SVG if needed, using standard icon here */}
+                       <span className="text-lg">🌸</span> <span className="text-xs font-black uppercase tracking-wider">Liên Hoa Nộ</span>
+                     </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-pink-50/50 p-2 rounded border border-pink-100">
+                        <MiniStat label="SÁT THƯƠNG" value={`${Math.round(stats.lotusDamageMult * 100)}%`} />
+                        <MiniStat label="HỒI CHIÊU" value={`${Math.round((1/stats.lotusCooldownMult) * 100)}%`} />
+                        <MiniStat label="PHẠM VI" value={`${Math.round(stats.lotusArea * 100)}%`} />
+                        <MiniStat label="CÁNH HOA" value={`x${stats.lotusAmount}`} />
                      </div>
                   </div>
                 )}
@@ -183,8 +198,9 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
       </div>
 
       {/* BOTTOM CENTER - BOSS BAR */}
+      {/* Position absolute to guarantee it stays at bottom even if stats panel is open/tall */}
       {activeBoss && (
-        <div className="w-full max-w-3xl mx-auto mb-8 pointer-events-auto animate-pop z-50">
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-3xl pointer-events-auto animate-pop z-50 px-6">
            <div className="flex justify-between items-end mb-2 px-2">
               <div className="bg-red-600 text-white px-4 py-2 border-4 border-black font-black uppercase italic text-xl transform -skew-x-12 neo-shadow tracking-widest">
                  ⚠️ {activeBoss.type === 'BOSS_1' ? 'CỖ MÁY HUỶ DIỆT' : activeBoss.type === 'BOSS_2' ? 'XẠ THỦ BÓNG ĐÊM' : 'TRÙM CUỐI'}

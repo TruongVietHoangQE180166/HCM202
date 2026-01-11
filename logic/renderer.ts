@@ -76,79 +76,145 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
         ctx.restore();
     });
 
+    // --- ENEMY RENDERING (LAYER 1: ATTACK INDICATORS) ---
     enemies.forEach(e => {
-      // --- BOSS 1: SLAM WARNING ---
+      // BOSS 1: SLAM WARNING (Filling Circle)
       if (e.attackPattern === 'SLAM' && e.attackState === 'WARN') {
-          const progress = (e.stateTimer || 0) / 1.5;
-          ctx.save(); ctx.translate(e.x, e.y);
-          ctx.beginPath(); ctx.arc(0, 0, 300, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(239, 68, 68, 0.2)`; ctx.fill();
-          ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.stroke();
-          ctx.beginPath(); ctx.arc(0, 0, 300 * progress, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(239, 68, 68, 0.4)`; ctx.fill();
+          const duration = 1.5; 
+          const progress = Math.min(1, (e.stateTimer || 0) / duration);
+          
+          ctx.save(); 
+          ctx.translate(e.x, e.y);
+          
+          ctx.beginPath(); 
+          ctx.arc(0, 0, 300, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; 
+          ctx.lineWidth = 4;
+          ctx.setLineDash([20, 10]);
+          ctx.stroke();
+          
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, 300, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
+          ctx.lineTo(0, 0);
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.3)'; 
+          ctx.fill();
+          
           ctx.restore();
       }
       
-      // --- BOSS 2: LASER DRAWING ---
+      // BOSS 2: LASER
       if (e.attackPattern === 'LASER') {
           const laserLen = 1500;
-          if (e.attackState === 'WARN' || e.attackState === 'CHARGING') {
+          const angle = e.laserAngle || 0;
+
+          if (e.attackState === 'WARN') {
               ctx.save();
               ctx.beginPath();
               ctx.moveTo(e.x, e.y);
-              ctx.lineTo(e.x + Math.cos(e.laserAngle || 0) * laserLen, e.y + Math.sin(e.laserAngle || 0) * laserLen);
-              ctx.strokeStyle = `rgba(255, 0, 0, ${e.attackState === 'CHARGING' ? 0.8 : 0.2})`;
-              ctx.lineWidth = e.attackState === 'CHARGING' ? 3 : 1;
+              ctx.lineTo(e.x + Math.cos(angle) * laserLen, e.y + Math.sin(angle) * laserLen);
+              ctx.strokeStyle = 'rgba(220, 38, 38, 0.5)';
+              ctx.lineWidth = 2;
               ctx.setLineDash([10, 10]);
               ctx.stroke();
               ctx.restore();
           } 
-          else if (e.attackState === 'FIRING') {
-              // Main Beam
+          else if (e.attackState === 'CHARGING') {
+              const pulse = 1 + Math.sin(gameTime * 30) * 0.2;
               ctx.save();
               ctx.beginPath();
               ctx.moveTo(e.x, e.y);
-              ctx.lineTo(e.x + Math.cos(e.laserAngle || 0) * laserLen, e.y + Math.sin(e.laserAngle || 0) * laserLen);
-              
-              // Glow
-              ctx.shadowBlur = 20; ctx.shadowColor = '#818cf8';
-              ctx.lineWidth = getRandomRange(40, 60);
-              ctx.strokeStyle = 'rgba(67, 56, 202, 0.5)';
+              ctx.lineTo(e.x + Math.cos(angle) * laserLen, e.y + Math.sin(angle) * laserLen);
+              ctx.strokeStyle = 'rgba(220, 38, 38, 0.8)';
+              ctx.lineWidth = 4 * pulse;
+              ctx.shadowColor = '#ef4444';
+              ctx.shadowBlur = 10;
+              ctx.stroke();
+              ctx.restore();
+          }
+          else if (e.attackState === 'FIRING') {
+              const flicker = Math.random() * 0.2 + 0.9;
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(e.x, e.y);
+              ctx.lineTo(e.x + Math.cos(angle) * laserLen, e.y + Math.sin(angle) * laserLen);
+              ctx.lineCap = 'round';
+              ctx.shadowBlur = 30; 
+              ctx.shadowColor = '#a855f7';
+              ctx.lineWidth = 60 * flicker;
+              ctx.strokeStyle = 'rgba(147, 51, 234, 0.5)';
               ctx.stroke();
               
-              // Core
-              ctx.shadowBlur = 0;
-              ctx.lineWidth = getRandomRange(10, 20);
-              ctx.strokeStyle = '#e0e7ff';
+              ctx.shadowBlur = 10;
+              ctx.shadowColor = '#fff';
+              ctx.lineWidth = 20 * flicker;
+              ctx.strokeStyle = '#fff';
               ctx.stroke();
               ctx.restore();
           }
       }
 
       if (e.aiType === 'KAMIKAZE') {
-          ctx.beginPath(); ctx.arc(e.x, e.y, 80, 0, Math.PI*2);
-          ctx.strokeStyle = `rgba(239, 68, 68, ${e.isCharging ? 0.8 : 0.1})`;
-          ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+           ctx.beginPath(); ctx.arc(e.x, e.y, 100, 0, Math.PI*2);
+           ctx.strokeStyle = `rgba(239, 68, 68, ${e.isCharging ? 0.6 : 0.1})`;
+           ctx.lineWidth = e.isCharging ? 4 : 2; 
+           if (e.isCharging) ctx.setLineDash([5, 5]);
+           ctx.stroke(); 
+           ctx.setLineDash([]);
       }
-      
+    });
+
+    // --- ENEMY RENDERING (LAYER 2: BODIES) ---
+    enemies.forEach(e => {
       ctx.save();
       ctx.translate(e.x, e.y);
-      if (e.flashTime > 0) {
-          ctx.translate((Math.random()-0.5)*4, (Math.random()-0.5)*4);
-          ctx.scale(0.95, 0.95);
+
+      if (e.aiType === 'KAMIKAZE' && e.isCharging) {
+         ctx.translate(getRandomRange(-3, 3), getRandomRange(-3, 3));
+         if (Math.floor(gameTime * 15) % 2 === 0) {
+             ctx.fillStyle = '#ef4444';
+         } else {
+             ctx.fillStyle = '#fff';
+         }
+      } else {
+         if (e.flashTime > 0) {
+            ctx.translate((Math.random()-0.5)*4, (Math.random()-0.5)*4);
+            ctx.scale(0.95, 0.95);
+            ctx.fillStyle = '#fff';
+         } else {
+            ctx.fillStyle = e.color;
+         }
       }
 
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.fillRect(-e.width/2 + 6, -e.height/2 + 6, e.width, e.height);
-      ctx.fillStyle = e.flashTime > 0 ? '#fff' : e.color;
+      
+      ctx.fillStyle = (e.flashTime > 0) ? '#fff' : (e.isCharging && e.aiType === 'KAMIKAZE' ? (Math.floor(gameTime * 20) % 2 === 0 ? '#ef4444' : '#fff') : e.color);
       ctx.strokeStyle = e.borderColor;
       ctx.lineWidth = e.aiType === 'BOSS' ? 8 : (e.type === 'ELITE' ? 6 : 4);
+      
       ctx.fillRect(-e.width/2, -e.height/2, e.width, e.height);
       ctx.strokeRect(-e.width/2, -e.height/2, e.width, e.height);
+      
       ctx.fillStyle = e.aiType === 'BOSS' ? '#ef4444' : '#000';
       const eyeSize = e.width * 0.15; const eyeOffset = e.width * 0.2;
-      ctx.fillRect(-eyeOffset - eyeSize/2, -5, eyeSize, eyeSize);
-      ctx.fillRect(eyeOffset - eyeSize/2, -5, eyeSize, eyeSize);
+      
+      if (e.attackState === 'FIRING' || e.isCharging) {
+          ctx.beginPath();
+          ctx.moveTo(-eyeOffset - eyeSize, -5);
+          ctx.lineTo(-eyeOffset, 5);
+          ctx.lineTo(-eyeOffset + eyeSize, -5);
+          ctx.fill();
+          
+          ctx.beginPath();
+          ctx.moveTo(eyeOffset - eyeSize, -5);
+          ctx.lineTo(eyeOffset, 5);
+          ctx.lineTo(eyeOffset + eyeSize, -5);
+          ctx.fill();
+      } else {
+          ctx.fillRect(-eyeOffset - eyeSize/2, -5, eyeSize, eyeSize);
+          ctx.fillRect(eyeOffset - eyeSize/2, -5, eyeSize, eyeSize);
+      }
       
       ctx.restore();
 
@@ -234,24 +300,87 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
     }
 
     projectiles.forEach(p => {
-        const tailLength = p.width * 2.5;
         ctx.save();
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 10;
-        ctx.strokeStyle = p.color; 
-        ctx.lineWidth = p.width / 2; 
-        ctx.lineCap = 'round';
         
-        if (p.type === 'ENEMY_BULLET') ctx.globalCompositeOperation = 'lighter';
-        
-        ctx.globalAlpha = 0.8;
-        ctx.beginPath(); 
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - Math.cos(p.rotation) * tailLength, p.y - Math.sin(p.rotation) * tailLength);
-        ctx.stroke(); 
-        ctx.globalAlpha = 1.0;
-        ctx.fillStyle = p.type === 'ENEMY_BULLET' ? '#fff' : '#fff'; 
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.width/3, 0, Math.PI*2); ctx.fill();
+        if (p.type === 'PLAYER_BULLET') {
+            // Enhanced Player Bullet (Tracer Style)
+            const tailLength = p.width * 4; 
+            const tailX = p.x - Math.cos(p.rotation) * tailLength;
+            const tailY = p.y - Math.sin(p.rotation) * tailLength;
+
+            const grad = ctx.createLinearGradient(p.x, p.y, tailX, tailY);
+            grad.addColorStop(0, '#fff');        
+            grad.addColorStop(0.2, '#fbbf24');   
+            grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = 15;
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = p.width * 0.6;
+            ctx.lineCap = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(tailX, tailY);
+            ctx.stroke();
+
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.width * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (p.type === 'LOTUS_PETAL') {
+             // Lotus Petal (Pink Glowing Projectile)
+            const tailLength = p.width * 2;
+            const tailX = p.x - Math.cos(p.rotation) * tailLength;
+            const tailY = p.y - Math.sin(p.rotation) * tailLength;
+
+            const grad = ctx.createLinearGradient(p.x, p.y, tailX, tailY);
+            grad.addColorStop(0, '#fff');        
+            grad.addColorStop(0.3, '#f472b6'); // Pink-400
+            grad.addColorStop(1, 'rgba(244, 114, 182, 0)');
+
+            ctx.shadowColor = '#ec4899'; // Pink-500
+            ctx.shadowBlur = 10;
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = p.width * 0.5;
+            ctx.lineCap = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(tailX, tailY);
+            ctx.stroke();
+            
+            // Petal Shape Head
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.width/2, p.width/4, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        } else {
+            // Enhanced Enemy Bullet (Glowing Orb)
+            const pulse = 1 + Math.sin(gameTime * 20) * 0.1;
+            
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 15;
+            
+            ctx.fillStyle = '#171717'; 
+            ctx.beginPath(); 
+            ctx.arc(p.x, p.y, (p.width/2) * pulse, 0, Math.PI*2); 
+            ctx.fill();
+
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = p.color;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); 
+            ctx.arc(p.x, p.y, (p.width/4), 0, Math.PI*2); 
+            ctx.fill();
+        }
+
         ctx.restore();
     });
 
@@ -272,16 +401,35 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
         if (p.rotation) ctx.rotate(p.rotation);
 
         if (p.type === 'SHOCKWAVE') {
-            ctx.beginPath();
-            ctx.arc(0, 0, Math.max(0, p.size), 0, Math.PI * 2);
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = p.color;
-            ctx.stroke();
+            const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(0, p.size));
+            grad.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            grad.addColorStop(0.5, p.color);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.globalAlpha = alpha * 0.6;
+            ctx.beginPath(); ctx.arc(0, 0, Math.max(0, p.size), 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = alpha;
+            ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+
         } else if (p.type === 'MUZZLE') {
+            ctx.rotate(p.rotation || 0);
             ctx.beginPath();
-            ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+            const spikes = 8;
+            const outerRadius = p.size;
+            const innerRadius = p.size * 0.4;
+            for (let i = 0; i < spikes * 2; i++) {
+                const r = (i % 2 === 0) ? outerRadius : innerRadius;
+                const a = (Math.PI * i) / spikes;
+                ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
             ctx.fillStyle = p.color;
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 10;
             ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(0, 0, p.size * 0.3, 0, Math.PI*2); ctx.fill();
+
         } else if (p.type === 'STAR') {
             ctx.fillStyle = p.color;
             ctx.beginPath();
@@ -298,48 +446,68 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
             ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             ctx.globalCompositeOperation = 'source-over';
         } else if (p.type === 'LIGHTNING' && p.path) {
-            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalCompositeOperation = 'screen'; 
             const drawPath = (pts: {x: number, y: number}[], width: number, alpha: number) => {
                 ctx.beginPath();
-                if (pts.length > 0) {
-                    ctx.moveTo(pts[0].x + getRandomRange(-2, 2), pts[0].y + getRandomRange(-2, 2));
-                }
-                for(let i=1; i<pts.length; i++) {
-                    ctx.lineTo(pts[i].x + getRandomRange(-2, 2), pts[i].y + getRandomRange(-2, 2));
-                }
+                if (pts.length > 0) ctx.moveTo(pts[0].x + getRandomRange(-2, 2), pts[0].y + getRandomRange(-2, 2));
+                for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x + getRandomRange(-2, 2), pts[i].y + getRandomRange(-2, 2));
                 ctx.lineWidth = width;
                 ctx.stroke();
             };
 
             const flicker = Math.random() * 0.3 + 0.7; 
             const fade = alpha; 
-            
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
+            ctx.shadowBlur = 30 * fade; ctx.shadowColor = p.color; ctx.strokeStyle = p.color;
+            ctx.globalAlpha = fade * 0.6 * flicker; drawPath(p.path, p.size * 2.5, fade);
+            ctx.shadowBlur = 15 * fade; ctx.globalAlpha = fade * 0.9 * flicker; drawPath(p.path, p.size, fade);
+            if (p.branches) p.branches.forEach(b => drawPath(b, p.size * 0.5, fade));
+            ctx.shadowBlur = 5; ctx.strokeStyle = '#fff'; ctx.globalAlpha = fade * flicker; drawPath(p.path, p.size * 0.4, fade);
+             if (p.branches) p.branches.forEach(b => drawPath(b, p.size * 0.2, fade));
+            ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'source-over';
+        } else if (p.type === 'LOTUS_BLOOM') {
+             // Render beautiful Mandala / Lotus Flower on ground
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#f472b6';
             
-            ctx.shadowBlur = 40 * fade;
-            ctx.shadowColor = p.color;
-            ctx.strokeStyle = p.color;
-            ctx.globalAlpha = fade * 0.5 * flicker;
-            drawPath(p.path, p.size * 3, fade);
-            
-            ctx.shadowBlur = 20 * fade;
-            ctx.globalAlpha = fade * 0.9 * flicker;
-            drawPath(p.path, p.size * 1.2, fade);
-            if (p.branches) {
-                p.branches.forEach(b => drawPath(b, p.size * 0.6, fade));
+            // Layers of petals
+            const petals = 8;
+            for(let j=0; j<3; j++) {
+                const layerSize = p.size * (1 - j * 0.2);
+                const layerAlpha = alpha * (1 - j * 0.2);
+                ctx.fillStyle = j % 2 === 0 ? p.color : '#fbcfe8'; 
+                ctx.globalAlpha = layerAlpha;
+                
+                ctx.save();
+                ctx.rotate(j * Math.PI/8); // Offset layers
+                for(let i=0; i<petals; i++) {
+                    ctx.rotate(Math.PI * 2 / petals);
+                    ctx.beginPath();
+                    // Draw petal shape
+                    ctx.moveTo(0, 0);
+                    ctx.quadraticCurveTo(layerSize * 0.3, -layerSize * 0.2, 0, -layerSize);
+                    ctx.quadraticCurveTo(-layerSize * 0.3, -layerSize * 0.2, 0, 0);
+                    ctx.fill();
+                }
+                ctx.restore();
             }
 
-            ctx.shadowBlur = 10;
+            // Glowing Center
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size * 0.2, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.globalAlpha = alpha;
+            ctx.fill();
+
+            // Ring
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size, 0, Math.PI * 2);
             ctx.strokeStyle = '#fff';
-            ctx.globalAlpha = fade * flicker;
-            drawPath(p.path, p.size * 0.4, fade);
-             if (p.branches) {
-                p.branches.forEach(b => drawPath(b, p.size * 0.2, fade));
-            }
-            
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
             ctx.shadowBlur = 0;
-            ctx.globalCompositeOperation = 'source-over';
         } else {
             ctx.fillStyle = p.color; 
             ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); 

@@ -33,7 +33,7 @@ export interface Buff {
   description: string;
   rarity: Rarity;
   effect: (stats: PlayerStats) => PlayerStats;
-  type: 'GUN_BUFF' | 'BOOK_BUFF' | 'LIGHTNING_BUFF' | 'STAT_BUFF';
+  type: 'GUN_BUFF' | 'BOOK_BUFF' | 'LIGHTNING_BUFF' | 'LOTUS_BUFF' | 'STAT_BUFF';
 }
 
 export interface PlayerStats {
@@ -59,11 +59,17 @@ export interface PlayerStats {
   bookArea: number;
   bookSpeed: number; // Tốc độ xoay
   
-  // Lightning Specific Stats (NEW)
+  // Lightning Specific Stats
   lightningDamageMult: number;
   lightningCooldownMult: number;
   lightningAmount: number;
   lightningArea: number;
+
+  // Lotus Specific Stats (NEW)
+  lotusDamageMult: number;
+  lotusCooldownMult: number;
+  lotusAmount: number; // Số lượng cánh hoa bắn ra
+  lotusArea: number;   // Kích thước vùng nổ
 
   // Progression
   level: number;
@@ -124,7 +130,7 @@ export interface Projectile extends Entity {
   damage: number;
   life: number;
   rotation: number;
-  type: 'PLAYER_BULLET' | 'ENEMY_BULLET';
+  type: 'PLAYER_BULLET' | 'ENEMY_BULLET' | 'LOTUS_PETAL';
   pierce: number;
   color: string;
   
@@ -140,7 +146,7 @@ export interface Particle extends Entity {
   maxLife: number; // For fading alpha
   color: string;
   size: number;
-  type: 'DOT' | 'SHOCKWAVE' | 'SQUARE' | 'SHELL' | 'STAR' | 'MUZZLE' | 'BEAM_CORE' | 'LIGHTNING' | 'FLASH';
+  type: 'DOT' | 'SHOCKWAVE' | 'SQUARE' | 'SHELL' | 'STAR' | 'MUZZLE' | 'BEAM_CORE' | 'LIGHTNING' | 'FLASH' | 'LOTUS_BLOOM';
   drag: number;   // Friction (0-1)
   growth: number; // Size change over time
   rotation?: number; 

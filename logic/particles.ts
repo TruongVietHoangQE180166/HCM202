@@ -72,11 +72,11 @@ export const createMuzzleFlash = (particles: Particle[], x: number, y: number, a
       x: x + Math.cos(angle) * 20, y: y + Math.sin(angle) * 20,
       width: 0, height: 0,
       vx: Math.cos(angle) * 50, vy: Math.sin(angle) * 50,
-      life: 0.1, maxLife: 0.1,
+      life: 0.15, maxLife: 0.15, // Increased life slightly to be more visible
       color: '#fef3c7',
       size: 25, type: 'MUZZLE',
       drag: 0, growth: 100,
-      rotation: angle
+      rotation: angle + getRandomRange(-0.5, 0.5) // Add more random rotation for jagged look
   });
 };
 
