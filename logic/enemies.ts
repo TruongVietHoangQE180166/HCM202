@@ -45,21 +45,21 @@ const createBoss = (
       if (type === 'BOSS_1') { 
         attackPattern = 'MISSILE'; 
         color = '#1f2937';
-        hp = 80000; // BUFFED previous turn
+        hp = 80000; 
         speed = 220; 
       } else if (type === 'BOSS_2') {
         attackPattern = 'BLACK_HOLE';
         color = '#1e1b4b'; 
         borderColor = '#818cf8';
-        hp = 150000; // BUFFED previous turn
+        hp = 150000; 
         speed = 240; 
       } else {
-        // BOSS 3 - TANKY BUT SLOW
+        // BOSS 3 - THE HARDEST (ENDURANCE TEST)
         attackPattern = 'SPIRAL';
         color = '#450a0a'; 
         borderColor = '#facc15'; 
-        hp = 180000; // HP: 180k as requested
-        speed = 180; // Slow movement
+        hp = 180000; // HP: 180k (Highest in game)
+        speed = 190; // Moderate speed, relentless tracking
       }
 
       return {
@@ -379,10 +379,10 @@ export const updateEnemies = (
          }
     }
 
-    // === BOSS 3: HIGH HP, EASY SKILLS ===
+    // === BOSS 3: THE ENDURANCE TEST ===
     else if (e.type === 'BOSS_3') {
-        // High HP Sponge, but moves attacks slower
-        if (e.attackState === 'IDLE' && e.stateTimer > 1.2) { // Relaxed Idle
+        // Difficulty Logic: Hard due to tankiness (180k HP) and Area Control, not pure speed.
+        if (e.attackState === 'IDLE' && e.stateTimer > 1.0) { // Standard idle
              const r = Math.random();
              if (r < 0.33) e.attackPattern = 'SPIRAL';
              else if (r < 0.66) e.attackPattern = 'GRID';
@@ -393,46 +393,46 @@ export const updateEnemies = (
              e.burstCount = 3; 
         }
 
-        // 1. SPIRAL NOVA (EASY DODGE)
+        // 1. SPIRAL NOVA: Slower speed but MASSIVE density and duration
         if (e.attackPattern === 'SPIRAL') {
             shouldMove = false;
             if (e.attackState === 'WARN') {
-                 // Long Warning: 1.0s
+                 // Warning: 1.0s (reactable)
                  if (e.stateTimer > 1.0) { e.attackState = 'FIRING'; e.stateTimer = 0; }
             }
             else if (e.attackState === 'FIRING') {
-                e.rotationSpeed = (e.rotationSpeed || 0) + dt * 0.15; // Slower spin up
-                e.laserAngle = (e.laserAngle || 0) + 2.0 * dt; // Slower rotation
+                e.rotationSpeed = (e.rotationSpeed || 0) + dt * 0.2; 
+                e.laserAngle = (e.laserAngle || 0) + 1.5 * dt; // Slow rotation
                 e.secondaryTimer = (e.secondaryTimer || 0) + dt;
                 
-                // Very Slow Fire Rate: 0.08s
+                // Fire Rate: 0.08s (Steady stream)
                 if (e.secondaryTimer > 0.08) { 
                     const arms = 6; 
                     for(let i=0; i<arms; i++) {
                        const angle = (e.laserAngle || 0) + (Math.PI * 2 / arms) * i;
                        projectiles.push({
-                            id: Math.random().toString(), x: e.x, y: e.y, width: 20, height: 20,
-                            vx: Math.cos(angle) * 400, vy: Math.sin(angle) * 400, // Very Slow Bullets (400)
-                            damage: e.damage, life: 6, rotation: angle, type: 'ENEMY_BULLET', pierce: 0, color: '#facc15'
+                            id: Math.random().toString(), x: e.x, y: e.y, width: 22, height: 22,
+                            vx: Math.cos(angle) * 380, vy: Math.sin(angle) * 380, // Speed 380: Avoidable but covers map
+                            damage: e.damage, life: 8, rotation: angle, type: 'ENEMY_BULLET', pierce: 0, color: '#facc15'
                         });
                     }
                     e.secondaryTimer = 0;
                 }
-                if (e.stateTimer > 3.0) { e.attackState = 'COOLDOWN'; e.stateTimer = 0; }
+                if (e.stateTimer > 4.0) { e.attackState = 'COOLDOWN'; e.stateTimer = 0; } // Lasts 4 seconds!
             }
         }
         
-        // 2. DEATH GRID (EASY MODE)
+        // 2. DEATH GRID: Wider gaps, slower spawn, but stays longer
         else if (e.attackPattern === 'GRID') {
             shouldMove = false;
             if (e.attackState === 'WARN') {
-                 // Very Long Warning: 1.2s
+                 // Warning: 1.2s
                  if (e.stateTimer > 1.2) { e.attackState = 'FIRING'; e.stateTimer = 0; }
             }
             else if (e.attackState === 'FIRING') {
                 e.secondaryTimer = (e.secondaryTimer || 0) + dt;
-                // Slow Grid Spawn: 0.5s
-                if (e.secondaryTimer > 0.5) { 
+                // Spawn Rate: 0.4s
+                if (e.secondaryTimer > 0.4) { 
                     const isHorizontal = Math.random() > 0.5;
                     const offset = getRandomRange(-500, 500);
                     const px = isHorizontal ? player.x + offset : player.x;
@@ -444,16 +444,16 @@ export const updateEnemies = (
                          type: 'DOT', drag:0, growth:0 
                     });
                     
-                    const count = 14; // Reduced Density (14 bullets)
+                    const count = 16; 
                     for(let k=0; k<count; k++) {
                          projectiles.push({
                             id: Math.random().toString(), 
-                            x: isHorizontal ? player.x - 700 + k*100 : px, // Wide gaps
-                            y: isHorizontal ? py : player.y - 700 + k*100,
+                            x: isHorizontal ? player.x - 700 + k*90 : px, 
+                            y: isHorizontal ? py : player.y - 700 + k*90,
                             width: 25, height: 25,
                             vx: isHorizontal ? 0 : (Math.random() > 0.5 ? 280 : -280), // Slow speed 280
                             vy: isHorizontal ? (Math.random() > 0.5 ? 280 : -280) : 0,
-                            damage: e.damage, life: 6, rotation: 0, type: 'ENEMY_BULLET', pierce: 0, color: '#ef4444'
+                            damage: e.damage, life: 7, rotation: 0, type: 'ENEMY_BULLET', pierce: 0, color: '#ef4444'
                          });
                     }
                     e.secondaryTimer = 0;
@@ -462,7 +462,7 @@ export const updateEnemies = (
             }
         }
 
-        // 3. EXECUTION DASH (TELEGRAPHED)
+        // 3. EXECUTION DASH: Clear telegraph, fair speed, high damage
         else if (e.attackPattern === 'DASH') {
              shouldMove = false;
              
@@ -470,13 +470,13 @@ export const updateEnemies = (
                   if (e.stateTimer === 0 || !e.dashTarget) {
                       e.dashTarget = { x: player.x, y: player.y };
                   }
-                  // Long Telegraph: 1.0s
+                  // Warning: 1.0s
                   if (e.stateTimer > 1.0) { 
                       e.attackState = 'DASHING'; e.stateTimer = 0; 
                       shakeManager.shake(15);
                       const angle = Math.atan2(e.dashTarget.y - e.y, e.dashTarget.x - e.x);
-                      e.vx = Math.cos(angle) * 900; // Slower Dash (900)
-                      e.vy = Math.sin(angle) * 900;
+                      e.vx = Math.cos(angle) * 950; // Speed 950: Fast but trackable
+                      e.vy = Math.sin(angle) * 950;
                   }
              }
              else if (e.attackState === 'DASHING') {
@@ -487,7 +487,7 @@ export const updateEnemies = (
                      particles.push({ id: Math.random().toString(), x: e.x, y: e.y, width: e.width, height: e.height, vx: 0, vy: 0, life: 0.3, maxLife: 0.3, color: 'rgba(220, 38, 38, 0.4)', size: e.width, type: 'SQUARE', drag: 0, growth: -5 });
                  }
                  
-                 if (e.stateTimer > 0.3) { 
+                 if (e.stateTimer > 0.35) { 
                      e.burstCount = (e.burstCount || 1) - 1;
                      e.vx = 0; e.vy = 0;
                      if (e.burstCount > 0) {
@@ -500,8 +500,7 @@ export const updateEnemies = (
         }
 
         if (e.attackState === 'COOLDOWN') {
-            // Generous Cooldown: 1.0s
-            if (e.stateTimer > 1.0) { e.attackState = 'IDLE'; e.stateTimer = 0; }
+            if (e.stateTimer > 0.8) { e.attackState = 'IDLE'; e.stateTimer = 0; }
         }
     }
 
