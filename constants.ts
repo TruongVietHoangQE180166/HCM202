@@ -9,10 +9,26 @@ export const BUFFS: Buff[] = [
   {
     id: 'hp_common',
     name: 'Bánh Mì (Thường)',
-    description: 'Hồi 20 HP & +20 Max HP',
+    description: '+0.5 Hồi Máu/giây & +20 Max HP',
     rarity: Rarity.COMMON,
     type: 'STAT_BUFF',
-    effect: (s) => ({ ...s, maxHP: s.maxHP + 20, hp: Math.min(s.maxHP + 20, s.hp + 20) })
+    effect: (s) => ({ ...s, maxHP: s.maxHP + 20, hp: s.hp + 20, hpRegen: s.hpRegen + 0.5 })
+  },
+  {
+    id: 'hp_regen_common',
+    name: 'Huyết Thanh',
+    description: '+1 Hồi Máu / giây',
+    rarity: Rarity.UNCOMMON,
+    type: 'STAT_BUFF',
+    effect: (s) => ({ ...s, hpRegen: s.hpRegen + 1 })
+  },
+  {
+    id: 'armor_regen_rare',
+    name: 'Pin Năng Lượng',
+    description: '+1 Hồi Giáp / giây',
+    rarity: Rarity.RARE,
+    type: 'STAT_BUFF',
+    effect: (s) => ({ ...s, armorRegen: s.armorRegen + 1 })
   },
   {
     id: 'spd_uncommon',
@@ -25,10 +41,18 @@ export const BUFFS: Buff[] = [
   {
     id: 'armor_rare',
     name: 'Áo Giáp Sắt (Hiếm)',
-    description: '+2 Giáp vĩnh viễn',
+    description: '+0.5 Hồi Giáp/giây & +1 Giảm sát thương',
     rarity: Rarity.RARE,
     type: 'STAT_BUFF',
-    effect: (s) => ({ ...s, armor: s.armor + 2 })
+    effect: (s) => ({ ...s, armor: s.armor + 1, armorRegen: s.armorRegen + 0.5 })
+  },
+  {
+    id: 'regen_legendary',
+    name: 'TRÁI TIM RỒNG',
+    description: '+5 Hồi Máu/giây & +3 Hồi Giáp/giây',
+    rarity: Rarity.LEGENDARY,
+    type: 'STAT_BUFF',
+    effect: (s) => ({ ...s, hpRegen: s.hpRegen + 5, armorRegen: s.armorRegen + 3 })
   },
 
   // --- GUN BUFFS ---

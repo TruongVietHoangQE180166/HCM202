@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
-  GameState, PlayerStats, Enemy, Projectile, Particle, ExpGem, HealthDrop,
+  GameState, PlayerStats, Enemy, Projectile, Particle, ExpGem, HealthDrop, ArmorDrop,
   Buff, Question, FloatingText, GameHistory 
 } from './types';
 import { QUESTIONS, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
@@ -24,7 +24,7 @@ import { loadGameHistory, saveGameHistory } from './logic/storage';
 import { calculatePlayerDamage, generateLevelUpOptions, applyQuizResult } from './logic/gameRules';
 import { INITIAL_STATS } from './logic/stats';
 import { createHitEffect, updateParticles, updateFloatingTexts } from './logic/particles';
-import { updatePlayerMovement, updateZoneLogic } from './logic/player';
+import { updatePlayerMovement, updateZoneLogic, ZoneState } from './logic/player';
 import { updateGun, updateLightning, updateBook, updateNova } from './logic/weapons';
 import { handleEnemySpawning, updateEnemies } from './logic/enemies';
 import { updateProjectiles } from './logic/projectiles';
@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const projectilesRef = useRef<Projectile[]>([]);
   const gemsRef = useRef<ExpGem[]>([]);
   const healthDropsRef = useRef<HealthDrop[]>([]);
+  const armorDropsRef = useRef<ArmorDrop[]>([]); // New Armor Drops
   const particlesRef = useRef<Particle[]>([]);
   const floatingTextsRef = useRef<FloatingText[]>([]);
   
@@ -72,8 +73,16 @@ const App: React.FC = () => {
   const iFrameRef = useRef(0);
   const statsRef = useRef<PlayerStats>(INITIAL_STATS);
   
-  const zoneRef = useRef({ active: false, radius: 0, center: { x: 0, y: 0 }, lastTriggeredLevel: 0 });
-  const bossFlags = useRef({ boss1: false, boss2: false, boss3: false });
+  const zoneRef = useRef<ZoneState>({ active: false, radius: 0, center: { x: 0, y: 0 }, lastBossId: null });
+  
+  // Boss State Tracking
+  const bossTrackerRef = useRef({ 
+    boss1Spawned: false, 
+    boss1DeathTime: null as number | null,
+    boss2Spawned: false, 
+    boss2DeathTime: null as number | null,
+    boss3Spawned: false 
+  });
 
   // Custom Hooks
   const keysRef = useInput();
@@ -123,12 +132,19 @@ const App: React.FC = () => {
     projectilesRef.current = [];
     gemsRef.current = [];
     healthDropsRef.current = [];
+    armorDropsRef.current = [];
     particlesRef.current = [];
     floatingTextsRef.current = [];
     playerRef.current = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, size: 40 };
     weaponTimersRef.current = { gun: 0, book: 0, lightning: 0, nova: 0 };
-    zoneRef.current = { active: false, radius: 0, center: {x:0, y:0}, lastTriggeredLevel: 0 };
-    bossFlags.current = { boss1: false, boss2: false, boss3: false };
+    zoneRef.current = { active: false, radius: 0, center: {x:0, y:0}, lastBossId: null };
+    
+    // Reset Boss Tracker
+    bossTrackerRef.current = { 
+      boss1Spawned: false, boss1DeathTime: null, 
+      boss2Spawned: false, boss2DeathTime: null, 
+      boss3Spawned: false 
+    };
     
     lastTimeRef.current = performance.now();
     startLoading(GameState.PLAYING);
@@ -187,19 +203,31 @@ const App: React.FC = () => {
 
     const s = statsRef.current;
 
+    // Apply Passive Regeneration (HP & Armor)
+    if (s.hp < s.maxHP || s.currentArmor < s.maxArmor) {
+        setStats(prev => ({
+            ...prev,
+            hp: Math.min(prev.maxHP, prev.hp + (prev.hpRegen * dt)),
+            currentArmor: Math.min(prev.maxArmor, prev.currentArmor + (prev.armorRegen * dt))
+        }));
+    }
+
     // 1. Player & Zone
-    updateZoneLogic(s, zoneRef.current, playerRef.current, floatingTextsRef.current, dt);
+    // Updated: Pass activeBoss to trigger zone
+    updateZoneLogic(zoneRef.current, playerRef.current, floatingTextsRef.current, dt, activeBoss);
+    
     // PASS ACTIVE BOSS TO PLAYER MOVEMENT FOR BLACK HOLE LOGIC
     updatePlayerMovement(playerRef.current, keysRef.current, s, zoneRef.current, dt, activeBoss);
 
     // 2. Enemy Spawning
     spawnTimerRef.current += dt;
-    const spawnInterval = Math.max(0.05, 0.5 - (s.level * 0.01) - (gameTimeRef.current * 0.0005));
+    // SLOWED DOWN SPAWN RATE
+    const spawnInterval = Math.max(0.15, 1.0 - (s.level * 0.01) - (gameTimeRef.current * 0.0002));
     if (spawnTimerRef.current >= spawnInterval) {
       handleEnemySpawning(
         gameTimeRef.current,
         playerRef.current,
-        bossFlags.current,
+        bossTrackerRef.current,
         enemiesRef.current,
         setActiveBoss
       );
@@ -234,6 +262,15 @@ const App: React.FC = () => {
       if (e.hp <= 0) {
         if (e.aiType !== 'KAMIKAZE') {
             setStats(prev => ({ ...prev, kills: prev.kills + 1 }));
+
+            // --- BOSS DEATH TRACKING ---
+            if (e.type === 'BOSS_1') {
+                bossTrackerRef.current.boss1DeathTime = gameTimeRef.current;
+            }
+            if (e.type === 'BOSS_2') {
+                bossTrackerRef.current.boss2DeathTime = gameTimeRef.current;
+            }
+            // ---------------------------
             
             // --- SPLITTER SPAWN LOGIC ---
             if (e.type === 'SPLITTER') {
@@ -258,20 +295,42 @@ const App: React.FC = () => {
             }
             // ----------------------------
 
-            let xpAmount = 25; let xpSize = 12; let heartChance = 0.01; let healAmount = 10;
-            if (e.type.includes('BOSS')) { xpAmount = 2000; xpSize = 24; heartChance = 1.0; healAmount = 100; } 
-            else if (e.type === 'ELITE') { xpAmount = 200; xpSize = 16; heartChance = 0.15; healAmount = 40; } 
-            else if (e.type === 'EXPLODER') { xpAmount = 40; xpSize = 12; heartChance = 0.02; healAmount = 15; }
-            else if (e.type === 'SPLITTER') { xpAmount = 60; xpSize = 14; heartChance = 0.05; }
+            // INCREASED EXP VALUES
+            let xpAmount = 100; let xpSize = 12; 
+            let heartChance = 0.01; let healAmount = 10;
+            let armorChance = 0.005; let armorAmount = 20; // Default armor chances
+
+            if (e.type.includes('BOSS')) { 
+                xpAmount = 15000; xpSize = 24; 
+                heartChance = 1.0; healAmount = 100;
+                armorChance = 1.0; armorAmount = 100; // Boss drops guaranteed shield
+            } 
+            else if (e.type === 'ELITE') { 
+                xpAmount = 2000; xpSize = 16; 
+                heartChance = 0.15; healAmount = 40;
+                armorChance = 0.1; armorAmount = 50;
+            } 
+            else if (e.type === 'EXPLODER') { xpAmount = 300; xpSize = 12; heartChance = 0.02; healAmount = 15; armorChance = 0.02; }
+            else if (e.type === 'SPLITTER') { xpAmount = 400; xpSize = 14; heartChance = 0.05; }
             
             gemsRef.current.push({
               id: Math.random().toString(), x: e.x, y: e.y, width: xpSize, height: xpSize,
               amount: xpAmount, color: 'oklch(0.5635 0.2408 260.8178)'
             });
+            
+            // Drop Health
             if (Math.random() < heartChance) {
                 healthDropsRef.current.push({
                     id: Math.random().toString(), x: e.x + getRandomRange(-20, 20), y: e.y + getRandomRange(-20, 20),
                     width: 24, height: 24, healAmount, life: 30
+                });
+            }
+
+            // Drop Armor (Shield)
+            if (Math.random() < armorChance) {
+                armorDropsRef.current.push({
+                    id: Math.random().toString(), x: e.x + getRandomRange(-20, 20), y: e.y + getRandomRange(-20, 20),
+                    width: 24, height: 24, restoreAmount: armorAmount, life: 30
                 });
             }
         }
@@ -284,10 +343,11 @@ const App: React.FC = () => {
     enemiesRef.current = enemiesRef.current.filter(e => e.hp > 0).concat(newMinis);
 
     // 6. Collectibles
-    const { nextGems, nextHealth } = updateCollectibles(
+    const { nextGems, nextHealth, nextArmor } = updateCollectibles(
         dt, 
         gemsRef.current, 
         healthDropsRef.current, 
+        armorDropsRef.current,
         playerRef.current, 
         s, 
         setStats, 
@@ -296,6 +356,7 @@ const App: React.FC = () => {
     );
     gemsRef.current = nextGems;
     healthDropsRef.current = nextHealth;
+    armorDropsRef.current = nextArmor;
 
     // 7. Sync & Cleanup
     if (activeBoss) {
@@ -327,6 +388,7 @@ const App: React.FC = () => {
         floatingTexts: floatingTextsRef.current,
         gems: gemsRef.current,
         healthDrops: healthDropsRef.current,
+        armorDrops: armorDropsRef.current,
         zone: zoneRef.current,
         gameTime: gameTimeRef.current,
         offsets: offsets

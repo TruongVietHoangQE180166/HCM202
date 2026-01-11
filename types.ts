@@ -40,9 +40,13 @@ export interface PlayerStats {
   // Core Stats
   maxHP: number;
   hp: number;
+  hpRegen: number; // New: Hồi máu mỗi giây
+  
   maxArmor: number;
   currentArmor: number;
-  armor: number;
+  armor: number; // Giảm sát thương thẳng
+  armorRegen: number; // New: Hồi giáp mỗi giây
+  
   moveSpeed: number;
 
   // Gun Specific Stats
@@ -114,7 +118,7 @@ export interface Enemy extends Entity {
 
   // Advanced Attack Logic
   attackRange?: number;
-  attackPattern?: 'BASIC' | 'BURST' | 'NOVA' | 'SLAM' | 'HOMING' | 'LASER' | 'SPIRAL' | 'DASH' | 'STOMP' | 'MISSILE' | 'BLACK_HOLE' | 'GRID';
+  attackPattern?: 'BASIC' | 'SINGLE' | 'BURST' | 'NOVA' | 'SLAM' | 'HOMING' | 'LASER' | 'SPIRAL' | 'DASH' | 'STOMP' | 'MISSILE' | 'BLACK_HOLE' | 'GRID';
   attackState?: 'IDLE' | 'WARN' | 'FIRING' | 'COOLDOWN' | 'CHARGING' | 'DASHING' | 'PULLING'; 
   stateTimer?: number;
   burstCount?: number;
@@ -182,5 +186,10 @@ export interface ExpGem extends Entity {
 
 export interface HealthDrop extends Entity {
   healAmount: number;
+  life: number;
+}
+
+export interface ArmorDrop extends Entity {
+  restoreAmount: number;
   life: number;
 }

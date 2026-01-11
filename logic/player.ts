@@ -8,11 +8,11 @@ interface PlayerRef {
   size: number;
 }
 
-interface ZoneState {
+export interface ZoneState {
   active: boolean;
   radius: number;
   center: { x: number; y: number };
-  lastTriggeredLevel: number;
+  lastBossId: string | null;
 }
 
 export const updatePlayerMovement = (
@@ -65,26 +65,35 @@ export const updatePlayerMovement = (
 };
 
 export const updateZoneLogic = (
-  stats: PlayerStats,
   zone: ZoneState,
   player: PlayerRef,
   floatingTexts: FloatingText[],
-  dt: number
+  dt: number,
+  activeBoss: Enemy | null
 ) => {
-  // Trigger Zone every 10 levels
-  if (stats.level % 10 === 0 && stats.level > zone.lastTriggeredLevel && !zone.active) {
+  // Trigger Zone if there is an active boss AND we haven't triggered for this boss ID yet
+  if (activeBoss && zone.lastBossId !== activeBoss.id && !zone.active) {
     zone.active = true;
-    zone.lastTriggeredLevel = stats.level;
+    zone.lastBossId = activeBoss.id;
     zone.radius = 1200;
     zone.center = { x: player.x, y: player.y };
     floatingTexts.push({
-      id: 'zone_warning', x: player.x, y: player.y - 100,
-      text: 'VÒNG BO ĐANG THU HẸP!', color: 'red', life: 3, vx: 0, vy: -1
+      id: 'zone_warning', x: player.x, y: player.y - 150,
+      text: '⚠️ VÒNG BO ĐANG THU HẸP! ⚠️', color: '#ef4444', life: 4, vx: 0, vy: -0.5
     });
   }
 
   if (zone.active) {
-    zone.radius -= 30 * dt; 
-    if (zone.radius < 200) zone.active = false;
+    // Shrink speed
+    zone.radius -= 35 * dt; 
+    
+    // Deactivate when too small
+    if (zone.radius < 300) {
+        zone.active = false;
+        floatingTexts.push({
+            id: 'zone_safe', x: player.x, y: player.y - 100,
+            text: 'VÒNG BO ĐÃ TAN BIẾN', color: '#22c55e', life: 2, vx: 0, vy: -1
+        });
+    }
   }
 };

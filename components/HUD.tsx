@@ -45,7 +45,7 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
               </div>
               <div className="h-4 bg-gray-200 border-2 border-black w-full relative overflow-hidden">
                 <div 
-                  className="h-full bg-red-500 transition-all duration-300 absolute left-0 top-0" 
+                  className="h-full bg-red-500 absolute left-0 top-0" 
                   style={{ width: `${Math.max(0, hpPercent)}%` }} 
                 />
                 <div className="absolute inset-0 opacity-20 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAIklEQVQIW2NkQAKrVq36zwjjgzjwqgABJNDt27cbIImC9AOw0wiV7Ip9QwAAAABJRU5ErkJggg==')]"></div>
@@ -65,7 +65,7 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
               </div>
                <div className="h-4 bg-gray-200 border-2 border-black w-full relative overflow-hidden">
                 <div 
-                  className="h-full bg-blue-500 transition-all duration-300 absolute left-0 top-0" 
+                  className="h-full bg-blue-500 absolute left-0 top-0" 
                   style={{ width: `${Math.max(0, armorPercent)}%` }} 
                 />
               </div>
@@ -185,7 +185,10 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
                    </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-gray-50/50 p-2 rounded border border-gray-100">
                       <MiniStat label="MÁU TỐI ĐA" value={stats.maxHP} />
-                      <MiniStat label="PHÒNG THỦ" value={stats.armor} />
+                      <MiniStat label="HỒI MÁU/s" value={stats.hpRegen.toFixed(1)} />
+                      <MiniStat label="KHIÊN TỐI ĐA" value={stats.maxArmor} />
+                      <MiniStat label="HỒI KHIÊN/s" value={stats.armorRegen.toFixed(1)} />
+                      <MiniStat label="GIẢM SÁT THƯƠNG" value={stats.armor} />
                       <MiniStat label="TỐC CHẠY" value={Math.round(stats.moveSpeed)} />
                    </div>
                 </div>

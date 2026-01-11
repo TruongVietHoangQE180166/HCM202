@@ -9,28 +9,52 @@ interface PlayerRef {
   size: number;
 }
 
+interface BossTracker {
+    boss1Spawned: boolean;
+    boss1DeathTime: number | null;
+    boss2Spawned: boolean;
+    boss2DeathTime: number | null;
+    boss3Spawned: boolean;
+}
+
 export const handleEnemySpawning = (
   gameTime: number,
   player: { x: number, y: number },
-  bossFlags: { boss1: boolean, boss2: boolean, boss3: boolean },
+  bossTracker: BossTracker,
   enemies: Enemy[],
   setActiveBoss: (e: Enemy | null) => void
 ) => {
   let bossType: Enemy['type'] | null = null;
   
-  // Boss Spawning Times: 3m, 6m, 9m
-  if (gameTime > 180 && !bossFlags.boss1) { 
-      bossFlags.boss1 = true; bossType = 'BOSS_1';
+  // === BOSS SPAWN LOGIC (SEQUENTIAL + DELAY) ===
+  const BOSS_DELAY = 120; // 2 minutes wait after death
+
+  // Boss 1: Spawns at 02:00 (120s) if not yet spawned
+  if (gameTime >= 120 && !bossTracker.boss1Spawned) {
+      bossTracker.boss1Spawned = true; 
+      bossType = 'BOSS_1';
   } 
-  else if (gameTime > 360 && !bossFlags.boss2) { 
-      bossFlags.boss2 = true; bossType = 'BOSS_2';
+  // Boss 2: Spawns ONLY if Boss 1 is dead AND 2 mins have passed since Boss 1 death
+  else if (
+      bossTracker.boss1DeathTime !== null && 
+      (gameTime - bossTracker.boss1DeathTime >= BOSS_DELAY) && 
+      !bossTracker.boss2Spawned
+  ) {
+      bossTracker.boss2Spawned = true; 
+      bossType = 'BOSS_2';
   }
-  else if (gameTime > 540 && !bossFlags.boss3) { 
-      bossFlags.boss3 = true; bossType = 'BOSS_3';
+  // Boss 3: Spawns ONLY if Boss 2 is dead AND 2 mins have passed since Boss 2 death
+  else if (
+      bossTracker.boss2DeathTime !== null && 
+      (gameTime - bossTracker.boss2DeathTime >= BOSS_DELAY) && 
+      !bossTracker.boss3Spawned
+  ) {
+      bossTracker.boss3Spawned = true; 
+      bossType = 'BOSS_3';
   }
 
-  // Calculate difficulty multiplier
-  const scale = 1 + (gameTime / 60) * 0.8; 
+  // Calculate difficulty multiplier based on time
+  const scale = 1 + (gameTime / 60) * 0.6; 
   
   // Spawn Boss Logic
   if (bossType) {
@@ -40,25 +64,29 @@ export const handleEnemySpawning = (
       const y = player.y + Math.sin(angle) * dist;
 
       let type: Enemy['type'] = bossType;
-      let hp = 8000 * scale; 
+      
+      let hp = 30000 * scale; 
       let size = 120; 
       let color = '#000'; 
       let borderColor = '#ef4444';
-      let dmg = 80 * scale; 
+      let dmg = 50 * scale; 
       let speed = 90;
       let attackPattern: Enemy['attackPattern'] = 'SLAM';
       
       if (bossType === 'BOSS_1') { 
-        attackPattern = 'MISSILE'; // Starts with missile phase capability
+        attackPattern = 'MISSILE'; 
         color = '#1f2937';
+        hp = 35000 * scale; 
       } else if (bossType === 'BOSS_2') {
         attackPattern = 'BLACK_HOLE';
         color = '#1e1b4b'; 
         borderColor = '#818cf8';
+        hp = 80000 * scale; 
       } else {
-        attackPattern = 'GRID'; // New Grid skill for Boss 3
+        attackPattern = 'GRID';
         color = '#450a0a';
         borderColor = '#facc15';
+        hp = 150000 * scale; 
       }
 
       const newBoss: Enemy = {
@@ -78,9 +106,11 @@ export const handleEnemySpawning = (
       return; // Boss spawned, skip normal wave for this frame
   }
 
-  // === SPAWN CLUSTERS (Normal Enemies) ===
-  const baseCount = 1 + Math.floor(gameTime / 45); 
-  const spawnCount = Math.min(10, baseCount); // Cap cluster size to 10
+  // === SPAWN CLUSTERS (REDUCED QUANTITY) ===
+  // Old: 1 + floor(time/25). Max 15.
+  // New: 1 + floor(time/30). Max 12. Slower scaling.
+  const baseCount = 1 + Math.floor(gameTime / 30); 
+  const spawnCount = Math.min(12, baseCount); 
   
   const angle = Math.random() * Math.PI * 2;
   const dist = 1000; 
@@ -88,16 +118,16 @@ export const handleEnemySpawning = (
   const clusterCenterY = player.y + Math.sin(angle) * dist;
 
   for (let i = 0; i < spawnCount; i++) {
-      const offsetX = getRandomRange(-150, 150);
-      const offsetY = getRandomRange(-150, 150);
+      const offsetX = getRandomRange(-200, 200);
+      const offsetY = getRandomRange(-200, 200);
       const x = clusterCenterX + offsetX;
       const y = clusterCenterY + offsetY;
 
       let type: Enemy['type'] = 'NORM_1';
       let aiType: Enemy['aiType'] = 'MELEE';
-      let hp = 30 * scale; 
+      let hp = 150 * scale; 
       let speed = 140; 
-      let dmg = 15 * scale; 
+      let dmg = 25 * scale;
       let size = 30;
       let color = '#d1d5db'; 
       let borderColor = '#374151';
@@ -106,32 +136,81 @@ export const handleEnemySpawning = (
       
       const r = Math.random();
 
+      // === PHASE LOGIC ===
+      
+      // PHASE 1: 0 - 60s
       if (gameTime < 60) {
-          if (r < 0.7) { type = 'NORM_1'; hp=40*scale; speed=130; } 
+          if (r < 0.9) { 
+              type = 'NORM_1'; 
+              hp = 150 * scale; 
+              speed = 120; 
+          } 
           else { 
-            type = 'NORM_2'; aiType = 'DASHER'; hp=50*scale; speed=100; color='#86efac'; size=28; 
+            type = 'NORM_2'; aiType = 'DASHER'; 
+            hp = 200 * scale; 
+            speed = 100; color='#86efac'; size=28; 
             attackPattern = 'DASH';
           }
-      } else if (gameTime < 180) {
-          if (r < 0.3) { type = 'NORM_2'; aiType = 'DASHER'; hp=70*scale; speed=120; color='#86efac'; attackPattern = 'DASH'; }
+      } 
+      // PHASE 2: 60s - 120s
+      else if (gameTime < 120) {
+          if (r < 0.7) { type = 'NORM_1'; hp = 250 * scale; speed=130; }
+          else if (r < 0.9) { type = 'NORM_2'; aiType = 'DASHER'; hp = 300 * scale; speed=120; color='#86efac'; attackPattern = 'DASH'; }
+          else { 
+              type = 'EXPLODER'; aiType = 'KAMIKAZE'; 
+              hp = 180 * scale; 
+              speed = 350; color='#f97316'; size=28; dmg=80*scale; 
+          }
+      } 
+      // PHASE 3: 120s - 180s (Includes Normal Shooter)
+      else if (gameTime < 180) {
+          if (r < 0.5) { type = 'NORM_2'; aiType = 'DASHER'; hp = 400 * scale; speed=130; color='#86efac'; attackPattern = 'DASH'; }
+          else if (r < 0.7) { 
+              type = 'EXPLODER'; aiType = 'KAMIKAZE'; hp = 300 * scale; speed=380; color='#f97316'; size=28; dmg=100*scale;
+          }
+          else if (r < 0.9) { 
+             // NORMAL SHOOTER (Single Shot)
+             type = 'SHOOTER'; aiType = 'RANGED'; 
+             hp = 300 * scale;
+             speed = 100; color='#c084fc'; size=35; attackRange = 400; attackPattern = 'SINGLE'; 
+          }
+          else { type = 'NORM_1'; hp = 300 * scale; speed=140; }
+      } 
+      // PHASE 4: 180s - 240s (Includes Elite Shooter)
+      else if (gameTime < 240) {
+          if (r < 0.2) { type = 'EXPLODER'; aiType = 'KAMIKAZE'; hp = 450 * scale; speed=400; color='#f97316'; size=28; dmg=120*scale; }
+          else if (r < 0.4) {
+             // NORMAL SHOOTER
+             type = 'SHOOTER'; aiType = 'RANGED'; hp = 450 * scale; speed=100; color='#c084fc'; size=35; attackRange = 400; attackPattern = 'SINGLE'; 
+          }
           else if (r < 0.6) { 
-              type = 'SHOOTER'; aiType = 'RANGED'; hp=60*scale; speed=100; color='#a855f7'; size=35; 
-              attackRange = 450; attackPattern = 'BURST'; 
+             // ELITE SHOOTER (Burst)
+             type = 'SHOOTER'; aiType = 'RANGED'; 
+             hp = 600 * scale; 
+             speed = 115; color='#a855f7'; size=38; attackRange = 500; attackPattern = 'BURST'; 
+             borderColor = '#f0abfc';
           }
           else if (r < 0.8) {
-              // SPLITTER SLIME Introduction
-              type = 'SPLITTER'; aiType = 'SLIME'; hp=100*scale; speed=90; color='#10b981'; size=45; borderColor='#064e3b';
-              dmg = 20*scale;
+              type = 'SPLITTER'; aiType = 'SLIME'; 
+              hp = 800 * scale; 
+              speed = 90; color='#10b981'; size=45; borderColor='#064e3b';
+              dmg = 30*scale;
           }
-          else { type = 'EXPLODER'; aiType = 'KAMIKAZE'; hp=40*scale; speed=320; color='#f97316'; size=28; dmg=80*scale; }
-      } else {
-          // Late Game Mix
-          if (r < 0.2) { type = 'NORM_2'; aiType = 'DASHER'; hp=100*scale; speed=130; color='#86efac'; attackPattern = 'DASH'; }
-          else if (r < 0.4) { type = 'SHOOTER'; aiType = 'RANGED'; hp=120*scale; speed=110; color='#a855f7'; size=35; attackRange = 500; attackPattern = 'BURST'; }
-          else if (r < 0.6) { type = 'SPLITTER'; aiType = 'SLIME'; hp=250*scale; speed=80; color='#10b981'; size=50; borderColor='#064e3b'; dmg=30*scale; }
-          else if (r < 0.8) { type = 'EXPLODER'; aiType = 'KAMIKAZE'; hp=90*scale; speed=380; color='#f97316'; size=28; dmg=120*scale; }
+          else { type = 'NORM_2'; aiType = 'DASHER'; hp = 500 * scale; speed=140; color='#86efac'; attackPattern = 'DASH'; }
+      }
+      // PHASE 5: 240s+
+      else {
+          if (r < 0.2) { type = 'SPLITTER'; aiType = 'SLIME'; hp = 1200 * scale; speed=90; color='#10b981'; size=50; borderColor='#064e3b'; dmg=40*scale; }
+          else if (r < 0.45) { 
+              // ELITE SHOOTER dominates late game
+              type = 'SHOOTER'; aiType = 'RANGED'; hp = 800 * scale; speed=120; color='#a855f7'; size=38; attackRange = 500; attackPattern = 'BURST'; borderColor = '#f0abfc';
+          }
+          else if (r < 0.65) { type = 'EXPLODER'; aiType = 'KAMIKAZE'; hp = 600 * scale; speed=420; color='#f97316'; size=28; dmg=150*scale; }
+          else if (r < 0.85) { type = 'NORM_2'; aiType = 'DASHER'; hp = 800 * scale; speed=150; color='#86efac'; attackPattern = 'DASH'; }
           else { 
-            type = 'ELITE'; aiType = 'MELEE'; hp=600*scale; speed=100; size=60; color='#dc2626'; borderColor='#fff'; dmg=50*scale; 
+            type = 'ELITE'; aiType = 'MELEE'; 
+            hp = 4000 * scale; 
+            speed = 115; size=70; color='#dc2626'; borderColor='#fff'; dmg=100*scale; 
             attackPattern = 'STOMP'; 
           }
       }
@@ -203,7 +282,7 @@ export const updateEnemies = (
         }
         else if (e.attackState === 'WARN') {
             shouldMove = false;
-            if (e.stateTimer > 1.0) {
+            if (e.stateTimer > 1.2) { // Increased warning for fairness
                 e.attackState = 'FIRING'; e.stateTimer = 0; shakeManager.shake(5);
                 particles.push({ id: Math.random().toString(), x: e.x, y: e.y, width:0, height:0, vx:0, vy:0, life:0.4, maxLife:0.4, color: '#dc2626', size: 150, type: 'SHOCKWAVE', drag:0, growth: 100 });
                 if (dist < 150) takeDamage(e.damage);
@@ -215,17 +294,14 @@ export const updateEnemies = (
     }
 
     // === BOSS SKILLS ===
-
-    // BOSS 1: MISSILE RAIN (Replaces SLAM randomly or alternates)
+    // BOSS 1: MISSILE RAIN
     if (e.type === 'BOSS_1') {
         if (e.attackState === 'IDLE') {
             if (e.stateTimer > 3.5) {
-                // 50/50 chance to SLAM or MISSILE
                 e.attackPattern = Math.random() > 0.5 ? 'SLAM' : 'MISSILE';
                 e.attackState = 'WARN'; e.stateTimer = 0;
                 
                 if (e.attackPattern === 'MISSILE') {
-                    // Generate random target points near player
                     e.missileTargets = [];
                     for(let i=0; i<5; i++) {
                         e.missileTargets.push({
@@ -238,8 +314,9 @@ export const updateEnemies = (
         }
         else if (e.attackState === 'WARN') {
             shouldMove = false;
-            // Slam logic handled below in generic block, Missile handled here visually in renderer
-            if (e.stateTimer > 1.5) { e.attackState = 'FIRING'; e.stateTimer = 0; }
+            // Increased Warning Time for Missile Rain to 2.0s
+            const warnTime = e.attackPattern === 'MISSILE' ? 2.0 : 1.5; 
+            if (e.stateTimer > warnTime) { e.attackState = 'FIRING'; e.stateTimer = 0; }
         }
         else if (e.attackState === 'FIRING') {
             shouldMove = false;
@@ -273,7 +350,6 @@ export const updateEnemies = (
                  e.secondaryTimer = 0;
              }
          }
-         // ... Laser logic same as before ...
          else if (e.attackPattern === 'LASER' && e.attackState === 'WARN') {
             const angle = Math.atan2(player.y - e.y, player.x - e.x);
             e.laserAngle = angle;
@@ -282,32 +358,29 @@ export const updateEnemies = (
          }
          else if (e.attackPattern === 'LASER' && e.attackState === 'CHARGING') {
              shouldMove = false;
-             if (e.stateTimer > 0.8) { e.attackState = 'FIRING'; e.stateTimer = 0; shakeManager.shake(10); }
+             // Charging time 0.8s -> 1.0s
+             if (e.stateTimer > 1.0) { e.attackState = 'FIRING'; e.stateTimer = 0; shakeManager.shake(10); }
          }
          else if (e.attackPattern === 'LASER' && e.attackState === 'FIRING') {
-             // ... Laser Firing logic (omitted for brevity, handled in renderer/collision)
              const beamLen = 1500;
              const x2 = e.x + Math.cos(e.laserAngle || 0) * beamLen;
              const y2 = e.y + Math.sin(e.laserAngle || 0) * beamLen;
-             // Line collision logic...
              const A = player.x - e.x; const B = player.y - e.y; const C = x2 - e.x; const D = y2 - e.y;
              const dot = A * C + B * D; const len_sq = C * C + D * D;
              let param = -1; if (len_sq !== 0) param = dot / len_sq;
              let xx, yy; if (param < 0) { xx = e.x; yy = e.y; } else if (param > 1) { xx = x2; yy = y2; } else { xx = e.x + param * C; yy = e.y + param * D; }
              const distToLine = Math.sqrt(Math.pow(player.x - xx, 2) + Math.pow(player.y - yy, 2));
-             if (distToLine < 40) { takeDamage(2); }
+             if (distToLine < 50) { takeDamage(2); } // Slightly wider hit area (40 -> 50)
 
              shouldMove = false;
              if (e.stateTimer > 2.0) { e.attackState = 'COOLDOWN'; e.stateTimer = 0; }
          }
-         // BLACK HOLE LOGIC
          else if (e.attackPattern === 'BLACK_HOLE' && e.attackState === 'WARN') {
              shouldMove = false;
-             if (e.stateTimer > 1.0) { e.attackState = 'PULLING'; e.stateTimer = 0; }
+             if (e.stateTimer > 1.5) { e.attackState = 'PULLING'; e.stateTimer = 0; }
          }
          else if (e.attackPattern === 'BLACK_HOLE' && e.attackState === 'PULLING') {
              shouldMove = false;
-             // Logic handled in App.tsx (Player Movement) via ActiveBoss check, but we can do some particle effects here
              if (Math.random() > 0.5) {
                  particles.push({
                      id: Math.random().toString(), x: player.x + getRandomRange(-50, 50), y: player.y + getRandomRange(-50, 50),
@@ -351,23 +424,18 @@ export const updateEnemies = (
         else if (e.attackPattern === 'GRID') {
             shouldMove = false;
             e.secondaryTimer = (e.secondaryTimer || 0) + dt;
-            // Spawn parallel lasers across screen
             if (e.secondaryTimer > 0.8) {
-                // Horizontal or Vertical
                 const isHorizontal = Math.random() > 0.5;
                 const offset = getRandomRange(-400, 400);
                 const px = isHorizontal ? player.x + offset : player.x;
                 const py = isHorizontal ? player.y : player.y + offset;
                 
-                // Visual Warning
                 particles.push({
                      id: Math.random().toString(), x: px, y: py, width:0, height:0,
                      vx:0, vy:0, life:1.5, maxLife:1.5, color: '#ef4444', size: isHorizontal ? 2 : 2000, 
-                     type: 'DOT', drag:0, growth:0 // HACK: Using DOT but customized rendering in renderer
+                     type: 'DOT', drag:0, growth:0 
                 });
                 
-                // Actual projectile (slow moving wide beam?)
-                // For simplicity, let's just spawn a row of bullets
                 const count = 10;
                 for(let k=0; k<count; k++) {
                      projectiles.push({
@@ -391,7 +459,28 @@ export const updateEnemies = (
     }
 
 
-    // SHOOTER / SPREAD LOGIC (Updated to Spread)
+    // === SHOOTER LOGIC (SINGLE & BURST) ===
+    
+    // NORMAL SHOOTER (Single Shot)
+    if (e.attackPattern === 'SINGLE' && dist < (e.attackRange || 400)) {
+        if (e.attackState !== 'FIRING') {
+            if (e.stateTimer > 2.0) {
+                e.attackState = 'FIRING'; e.stateTimer = 0;
+                // Fire one bullet
+                const angle = Math.atan2(player.y - e.y, player.x - e.x);
+                projectiles.push({
+                    id: Math.random().toString(), x: e.x, y: e.y, width: 16, height: 16,
+                    vx: Math.cos(angle) * 350, vy: Math.sin(angle) * 350,
+                    damage: e.damage, life: 3, rotation: angle, type: 'ENEMY_BULLET', pierce: 0, color: '#c084fc'
+                });
+            }
+        } else {
+            // Quick cooldown for visual consistency
+            if (e.stateTimer > 0.3) { e.attackState = 'IDLE'; e.stateTimer = 0; }
+        }
+    }
+
+    // ELITE SHOOTER (Burst 3 shots)
     if (e.attackPattern === 'BURST' && dist < (e.attackRange || 500)) {
         if (e.attackState !== 'FIRING') {
             if (e.stateTimer > 2.0) {

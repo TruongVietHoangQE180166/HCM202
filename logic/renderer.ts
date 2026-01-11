@@ -1,5 +1,5 @@
 
-import { PlayerStats, Enemy, Projectile, Particle, FloatingText, ExpGem, HealthDrop } from '../types';
+import { PlayerStats, Enemy, Projectile, Particle, FloatingText, ExpGem, HealthDrop, ArmorDrop } from '../types';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants';
 import { getRandomRange } from '../utils';
 
@@ -12,6 +12,7 @@ interface RenderState {
   floatingTexts: FloatingText[];
   gems: ExpGem[];
   healthDrops: HealthDrop[];
+  armorDrops: ArmorDrop[];
   zone: { active: boolean, radius: number, center: { x: number, y: number } };
   gameTime: number;
   offsets: { x: number, y: number };
@@ -20,7 +21,7 @@ interface RenderState {
 export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) => {
     const { 
         stats, player, enemies, projectiles, particles, floatingTexts, 
-        gems, healthDrops, zone, gameTime, offsets 
+        gems, healthDrops, armorDrops, zone, gameTime, offsets 
     } = state;
 
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -76,6 +77,28 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
         ctx.restore();
     });
 
+    armorDrops.forEach(a => {
+        const scale = 1 + Math.cos(gameTime * 6) * 0.1;
+        ctx.save();
+        ctx.translate(a.x, a.y);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.arc(2, 4, 12, 0, Math.PI*2); ctx.fill();
+        
+        // Shield Icon
+        ctx.fillStyle = '#3b82f6'; // Blue-500
+        ctx.beginPath();
+        ctx.moveTo(0, 15);
+        ctx.bezierCurveTo(15, 5, 15, -10, 0, -15);
+        ctx.bezierCurveTo(-15, -10, -15, 5, 0, 15);
+        ctx.fill();
+        ctx.strokeStyle = '#1e3a8a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
+    });
+
     // --- ENEMY RENDERING (LAYER 1: ATTACK INDICATORS) ---
     enemies.forEach(e => {
       // 1. DASHER TELEGRAPH
@@ -103,7 +126,33 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
           });
       }
 
-      // 3. BOSS 2: BLACK HOLE
+      // 3. BOSS 1: SLAM TELEGRAPH (New)
+      if (e.type === 'BOSS_1' && e.attackPattern === 'SLAM' && e.attackState === 'WARN') {
+          const SLAM_RADIUS = 300;
+          // Calculate progress based on timer (approx 1.5s warning time)
+          const progress = Math.min(1, (e.stateTimer || 0) / 1.5);
+          
+          ctx.save();
+          ctx.translate(e.x, e.y);
+          
+          // Outer boundary
+          ctx.beginPath(); 
+          ctx.arc(0, 0, SLAM_RADIUS, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)'; 
+          ctx.lineWidth = 3; 
+          ctx.setLineDash([15, 10]); 
+          ctx.stroke();
+
+          // Filling circle
+          ctx.beginPath(); 
+          ctx.arc(0, 0, SLAM_RADIUS * progress, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.3)'; 
+          ctx.fill();
+          
+          ctx.restore();
+      }
+
+      // 4. BOSS 2: BLACK HOLE
       if (e.type === 'BOSS_2' && e.attackPattern === 'BLACK_HOLE' && (e.attackState === 'WARN' || e.attackState === 'PULLING')) {
           ctx.save();
           ctx.translate(e.x, e.y);
@@ -129,9 +178,9 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
           ctx.restore();
       }
 
-      // 4. ELITE STOMP
+      // 5. ELITE STOMP
       if (e.type === 'ELITE' && e.attackPattern === 'STOMP' && e.attackState === 'WARN') {
-          const progress = Math.min(1, (e.stateTimer || 0) / 1.0);
+          const progress = Math.min(1, (e.stateTimer || 0) / 1.2);
           ctx.save(); ctx.translate(e.x, e.y);
           ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI*2); ctx.strokeStyle = 'rgba(220, 38, 38, 0.4)'; ctx.stroke();
           ctx.beginPath(); ctx.arc(0, 0, 150 * progress, 0, Math.PI*2); ctx.fillStyle = 'rgba(220, 38, 38, 0.2)'; ctx.fill();

@@ -2,11 +2,15 @@
 import { PlayerStats } from '../types';
 
 export const INITIAL_STATS: PlayerStats = {
-  maxHP: 80, 
-  hp: 80,
-  maxArmor: 20, 
-  currentArmor: 20,
-  armor: 0,
+  maxHP: 1000, 
+  hp: 1000,
+  hpRegen: 1, // Khởi điểm hồi 1 HP/s
+
+  maxArmor: 500, 
+  currentArmor: 500,
+  armor: 5, // Khởi điểm giảm 5 sát thương nhận vào
+  armorRegen: 1, // Khởi điểm hồi 1 Giáp/s
+
   moveSpeed: 220, 
   gunDamageMult: 0.8, 
   gunCooldownMult: 1.0, gunAmount: 1, gunPierce: 0, gunSpeed: 1.0,
