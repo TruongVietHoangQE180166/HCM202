@@ -42,13 +42,13 @@ export const calculatePlayerDamage = (
 
 // --- WEIGHTED RARITY LOGIC ---
 const RARITY_WEIGHTS: Record<Rarity, number> = {
-    [Rarity.COMMON]: 25,      // Reduced (was 40)
-    [Rarity.UNCOMMON]: 25,    // Same
-    [Rarity.RARE]: 20,        // Increased (was 15)
-    [Rarity.EPIC]: 15,        // Increased (was 10)
-    [Rarity.LEGENDARY]: 10,   // Increased (was 6)
-    [Rarity.MYTHIC]: 6,       // Doubled (was 3)
-    [Rarity.GODLY]: 4         // Quadrupled (was 1)
+    [Rarity.COMMON]: 50,      // 50% - Phổ biến
+    [Rarity.UNCOMMON]: 30,    // 30% - Thường gặp
+    [Rarity.RARE]: 13,        // 13% - Hiếm
+    [Rarity.EPIC]: 5,         // 5% - Rất hiếm
+    [Rarity.LEGENDARY]: 1.5,  // 1.5% - Cực kỳ may mắn mới thấy
+    [Rarity.MYTHIC]: 0.4,     // 0.4% - Tỷ lệ trúng số
+    [Rarity.GODLY]: 0.1       // 0.1% - Truyền thuyết
 };
 
 const getRandomRarity = (): Rarity => {
