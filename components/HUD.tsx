@@ -9,10 +9,10 @@ import {
 interface HUDProps {
   stats: PlayerStats;
   timer: number;
-  activeBoss: Enemy | null;
+  activeBosses: Enemy[]; // Changed from single activeBoss to array
 }
 
-const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
+const HUD: React.FC<HUDProps> = ({ stats, timer, activeBosses }) => {
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
 
   const hpPercent = (stats.hp / stats.maxHP) * 100;
@@ -23,6 +23,15 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getBossTitle = (type: string) => {
+      switch(type) {
+          case 'BOSS_1': return 'CỖ MÁY HUỶ DIỆT';
+          case 'BOSS_2': return 'XẠ THỦ BÓNG ĐÊM';
+          case 'BOSS_3': return 'TRÙM CUỐI';
+          default: return 'BOSS';
+      }
   };
 
   return (
@@ -198,29 +207,33 @@ const HUD: React.FC<HUDProps> = ({ stats, timer, activeBoss }) => {
 
       </div>
 
-      {/* BOTTOM CENTER - BOSS BAR */}
-      {/* Position absolute to guarantee it stays at bottom even if stats panel is open/tall */}
-      {activeBoss && (
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-3xl pointer-events-auto animate-pop z-50 px-6">
-           <div className="flex justify-between items-end mb-2 px-2">
-              <div className="bg-red-600 text-white px-4 py-2 border-4 border-black font-black uppercase italic text-xl transform -skew-x-12 neo-shadow tracking-widest">
-                 ⚠️ {activeBoss.type === 'BOSS_1' ? 'CỖ MÁY HUỶ DIỆT' : activeBoss.type === 'BOSS_2' ? 'XẠ THỦ BÓNG ĐÊM' : 'TRÙM CUỐI'}
-              </div>
-              <div className="font-mono font-bold bg-black text-white px-3 py-1 border-4 border-white text-lg shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
-                {Math.ceil(activeBoss.hp)} / {Math.ceil(activeBoss.maxHP)}
-              </div>
-           </div>
-           <div className="h-8 bg-black border-4 border-black p-1 neo-shadow relative">
-             <div 
-               className="h-full bg-red-600 transition-all duration-100 relative overflow-hidden" 
-               style={{ width: `${(activeBoss.hp / activeBoss.maxHP) * 100}%` }}
-             >
-                {/* Danger stripes */}
-                <div className="absolute inset-0 opacity-30" style={{backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #000 10px, #000 20px)'}}></div>
-                {/* Glare */}
-                <div className="absolute top-0 left-0 w-full h-1/2 bg-white opacity-20"></div>
+      {/* BOTTOM CENTER - BOSS BARS (STACKED) */}
+      {/* Position absolute to guarantee it stays at bottom */}
+      {activeBosses.length > 0 && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-3xl pointer-events-auto animate-pop z-50 px-6 flex flex-col-reverse gap-3">
+           {activeBosses.map((boss) => (
+             <div key={boss.id} className="w-full">
+               <div className="flex justify-between items-end mb-1 px-1">
+                  <div className="bg-red-600 text-white px-2 py-0.5 border-2 border-black font-black uppercase italic text-sm transform -skew-x-12 neo-shadow tracking-widest">
+                     ⚠️ {getBossTitle(boss.type)}
+                  </div>
+                  <div className="font-mono font-bold bg-black text-white px-2 py-0.5 border-2 border-white text-xs shadow-[2px_2px_0px_rgba(0,0,0,0.5)]">
+                    {Math.ceil(boss.hp)} / {Math.ceil(boss.maxHP)}
+                  </div>
+               </div>
+               <div className="h-4 bg-black border-2 border-black p-0.5 neo-shadow relative">
+                 <div 
+                   className="h-full bg-red-600 transition-all duration-100 relative overflow-hidden" 
+                   style={{ width: `${(boss.hp / boss.maxHP) * 100}%` }}
+                 >
+                    {/* Danger stripes */}
+                    <div className="absolute inset-0 opacity-30" style={{backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #000 10px, #000 20px)'}}></div>
+                    {/* Glare */}
+                    <div className="absolute top-0 left-0 w-full h-1/2 bg-white opacity-20"></div>
+                 </div>
+               </div>
              </div>
-           </div>
+           ))}
         </div>
       )}
 

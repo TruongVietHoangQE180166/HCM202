@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Terminal, CheckCircle2 } from 'lucide-react';
 
 interface PolicyModalProps {
   onClose: () => void;
@@ -8,28 +8,74 @@ interface PolicyModalProps {
 
 const PolicyModal: React.FC<PolicyModalProps> = ({ onClose }) => {
   return (
-    <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white border-4 border-black neo-shadow w-full max-w-[600px] max-h-[90vh] flex flex-col">
-        <div className="bg-gray-200 text-black px-4 py-2 flex justify-between items-center border-b-4 border-black shrink-0">
-          <span className="font-mono font-bold uppercase tracking-widest">SECURITY_POLICY.TXT</span>
-          <button onClick={onClose} className="hover:bg-black hover:text-white px-2 font-black border-2 border-black transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+    <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 font-mono">
+      <div className="bg-[#0c0c0c] border-2 border-gray-700 w-full max-w-2xl shadow-2xl flex flex-col">
+        
+        {/* Terminal Header */}
+        <div className="bg-[#1f1f1f] px-4 py-2 flex justify-between items-center border-b border-gray-700">
+           <div className="flex items-center gap-2 text-gray-400 text-xs">
+              <Terminal size={14} />
+              <span>user@system:~/privacy-policy</span>
+           </div>
+           <div className="flex gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-400 cursor-pointer" onClick={onClose}></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+           </div>
         </div>
-        <div className="p-8 overflow-y-auto">
-          <h2 className="text-3xl font-black italic uppercase mb-6">Cam Kết AI & Bảo Mật</h2>
-          <div className="prose font-medium text-justify mb-8">
-            <p className="mb-4">
-              Trò chơi này được phát triển với sự hỗ trợ của công nghệ Trí tuệ Nhân tạo (AI) tiên tiến để tạo ra trải nghiệm chơi game năng động.
-            </p>
-            <p>
-              Chúng tôi cam kết không thu thập dữ liệu cá nhân của người chơi. Mọi dữ liệu lịch sử đấu chỉ được lưu trữ cục bộ trên thiết bị (Local Storage) của bạn.
-            </p>
-          </div>
-          <button onClick={onClose} className="w-full bg-black text-white px-4 py-4 font-black hover:bg-gray-800 uppercase border-4 border-transparent hover:border-gray-500">
-            Tôi Đã Hiểu
-          </button>
+
+        {/* Content */}
+        <div className="p-8 text-gray-300 text-sm leading-relaxed overflow-y-auto max-h-[70vh]">
+           <div className="mb-6">
+              <span className="text-green-500">➜</span> <span className="text-blue-400">~</span> cat <span className="text-yellow-300">cam-ket-su-dung.txt</span>
+           </div>
+
+           <h2 className="text-2xl font-bold text-white mb-6 uppercase tracking-wider border-b border-gray-800 pb-2">
+             CAM KẾT SỬ DỤNG AI & BẢO MẬT
+           </h2>
+
+           <div className="space-y-6">
+              <div className="flex gap-4">
+                 <CheckCircle2 className="text-green-500 shrink-0" size={20} />
+                 <div>
+                    <h3 className="font-bold text-white mb-1">1. Sử Dụng Công Nghệ AI</h3>
+                    <p className="text-gray-400">
+                      Trò chơi sử dụng các mô hình ngôn ngữ lớn (LLM) để tạo ra các câu hỏi trắc nghiệm, lời thoại và mô tả kỹ năng một cách ngẫu nhiên, giúp tăng tính đa dạng cho trải nghiệm.
+                    </p>
+                 </div>
+              </div>
+
+              <div className="flex gap-4">
+                 <CheckCircle2 className="text-green-500 shrink-0" size={20} />
+                 <div>
+                    <h3 className="font-bold text-white mb-1">2. Bảo Mật Dữ Liệu (Local Storage)</h3>
+                    <p className="text-gray-400">
+                      Chúng tôi cam kết <strong>KHÔNG</strong> thu thập, lưu trữ hay chia sẻ bất kỳ thông tin cá nhân nào của bạn lên máy chủ. Mọi dữ liệu như: Lịch sử đấu, Cài đặt, Tiến trình đều được lưu trữ cục bộ ngay trên trình duyệt của bạn.
+                    </p>
+                 </div>
+              </div>
+
+              <div className="flex gap-4">
+                 <CheckCircle2 className="text-green-500 shrink-0" size={20} />
+                 <div>
+                    <h3 className="font-bold text-white mb-1">3. Trách Nhiệm Nội Dung</h3>
+                    <p className="text-gray-400">
+                      Nội dung lịch sử và tư tưởng Hồ Chí Minh được biên tập cẩn thận. Tuy nhiên, AI có thể có sai sót nhỏ. Chúng tôi luôn hoan nghênh đóng góp ý kiến để hoàn thiện.
+                    </p>
+                 </div>
+              </div>
+           </div>
+
+           <div className="mt-8 pt-6 border-t border-gray-800 flex justify-end">
+              <button 
+                onClick={onClose}
+                className="bg-green-600 hover:bg-green-500 text-black font-bold px-6 py-2 uppercase tracking-wider transition-colors"
+              >
+                [ CHẤP NHẬN & ĐÓNG ]
+              </button>
+           </div>
         </div>
+
       </div>
     </div>
   );

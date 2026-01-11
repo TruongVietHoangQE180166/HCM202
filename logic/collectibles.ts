@@ -89,9 +89,15 @@ export const updateCollectibles = (
                 next.maxHP += extraMaxHP;
                 next.maxArmor += extraMaxArmor;
                 
-                // Heal/Restore on Level Up
-                next.hp += extraMaxHP; 
-                next.currentArmor += extraMaxArmor;
+                // FULL RESTORE (Modified)
+                next.hp = next.maxHP; 
+                next.currentArmor = next.maxArmor;
+
+                // Visual Text
+                floatingTexts.push({
+                    id: Math.random().toString(), x: player.x, y: player.y - 60,
+                    text: 'HỒI PHỤC TOÀN DIỆN!', color: '#fbbf24', life: 2.0, vx: 0, vy: -2
+                });
             }
             
             return next;

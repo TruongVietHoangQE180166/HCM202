@@ -14,6 +14,7 @@ import QuizModal from './components/QuizModal';
 import LoadingScreen from './components/LoadingScreen';
 import MainMenu from './components/MainMenu';
 import GameOverScreen from './components/GameOverScreen';
+import VictoryScreen from './components/VictoryScreen'; // NEW IMPORT
 import HistoryModal from './components/HistoryModal';
 import TutorialModal from './components/TutorialModal';
 import PolicyModal from './components/PolicyModal';
@@ -36,7 +37,8 @@ const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
   const [timer, setTimer] = useState(0);
   const [stats, setStats] = useState<PlayerStats>(INITIAL_STATS);
-  const [activeBoss, setActiveBoss] = useState<Enemy | null>(null);
+  // CHANGED: activeBoss (single) -> activeBosses (array)
+  const [activeBosses, setActiveBosses] = useState<Enemy[]>([]);
   
   // Menu UI States
   const [showHistory, setShowHistory] = useState(false);
@@ -61,7 +63,7 @@ const App: React.FC = () => {
   const projectilesRef = useRef<Projectile[]>([]);
   const gemsRef = useRef<ExpGem[]>([]);
   const healthDropsRef = useRef<HealthDrop[]>([]);
-  const armorDropsRef = useRef<ArmorDrop[]>([]); // New Armor Drops
+  const armorDropsRef = useRef<ArmorDrop[]>([]); 
   const particlesRef = useRef<Particle[]>([]);
   const floatingTextsRef = useRef<FloatingText[]>([]);
   
@@ -81,8 +83,12 @@ const App: React.FC = () => {
     boss1DeathTime: null as number | null,
     boss2Spawned: false, 
     boss2DeathTime: null as number | null,
-    boss3Spawned: false 
+    boss3Spawned: false,
+    boss3DeathTime: null as number | null,
+    tripleBossSpawned: false 
   });
+  
+  const winTriggeredRef = useRef(false);
 
   // Custom Hooks
   const keysRef = useInput();
@@ -124,7 +130,7 @@ const App: React.FC = () => {
   const startGame = () => {
     setTimer(0);
     setStats(INITIAL_STATS);
-    setActiveBoss(null);
+    setActiveBosses([]);
     gameTimeRef.current = 0;
     
     // Reset Entities
@@ -143,8 +149,10 @@ const App: React.FC = () => {
     bossTrackerRef.current = { 
       boss1Spawned: false, boss1DeathTime: null, 
       boss2Spawned: false, boss2DeathTime: null, 
-      boss3Spawned: false 
+      boss3Spawned: false, boss3DeathTime: null,
+      tripleBossSpawned: false
     };
+    winTriggeredRef.current = false;
     
     lastTimeRef.current = performance.now();
     startLoading(GameState.PLAYING);
@@ -153,6 +161,16 @@ const App: React.FC = () => {
   const handleGameOver = () => {
     handleSaveHistory(statsRef.current, gameTimeRef.current);
     startLoading(GameState.GAMEOVER, 1500);
+  };
+  
+  const handleWin = () => {
+      if (winTriggeredRef.current) return;
+      winTriggeredRef.current = true;
+      handleSaveHistory(statsRef.current, gameTimeRef.current);
+      // Wait a moment for the final explosion
+      setTimeout(() => {
+          setGameState(GameState.WIN);
+      }, 2000);
   };
 
   const backToMenu = () => { startLoading(GameState.MENU, 1000); };
@@ -213,23 +231,19 @@ const App: React.FC = () => {
     }
 
     // 1. Player & Zone
-    // Updated: Pass activeBoss to trigger zone
-    updateZoneLogic(zoneRef.current, playerRef.current, floatingTextsRef.current, dt, activeBoss);
-    
-    // PASS ACTIVE BOSS TO PLAYER MOVEMENT FOR BLACK HOLE LOGIC
-    updatePlayerMovement(playerRef.current, keysRef.current, s, zoneRef.current, dt, activeBoss);
+    updateZoneLogic(zoneRef.current, playerRef.current, floatingTextsRef.current, dt, activeBosses);
+    updatePlayerMovement(playerRef.current, keysRef.current, s, zoneRef.current, dt, activeBosses);
 
     // 2. Enemy Spawning
     spawnTimerRef.current += dt;
-    // SLOWED DOWN SPAWN RATE
-    const spawnInterval = Math.max(0.15, 1.0 - (s.level * 0.01) - (gameTimeRef.current * 0.0002));
+    const spawnInterval = Math.max(0.6, 2.0 - (s.level * 0.02) - (gameTimeRef.current * 0.0005));
     if (spawnTimerRef.current >= spawnInterval) {
       handleEnemySpawning(
         gameTimeRef.current,
         playerRef.current,
         bossTrackerRef.current,
         enemiesRef.current,
-        setActiveBoss
+        setActiveBosses
       );
       spawnTimerRef.current = 0;
     }
@@ -256,7 +270,7 @@ const App: React.FC = () => {
     );
     if (iFrameRef.current > 0) iFrameRef.current -= dt;
 
-    // 5. Deaths & Drops & SPLITTER LOGIC
+    // 5. Deaths & Drops
     const newMinis: Enemy[] = [];
     enemiesRef.current.forEach(e => {
       if (e.hp <= 0) {
@@ -264,15 +278,11 @@ const App: React.FC = () => {
             setStats(prev => ({ ...prev, kills: prev.kills + 1 }));
 
             // --- BOSS DEATH TRACKING ---
-            if (e.type === 'BOSS_1') {
-                bossTrackerRef.current.boss1DeathTime = gameTimeRef.current;
-            }
-            if (e.type === 'BOSS_2') {
-                bossTrackerRef.current.boss2DeathTime = gameTimeRef.current;
-            }
+            if (e.type === 'BOSS_1') bossTrackerRef.current.boss1DeathTime = gameTimeRef.current;
+            if (e.type === 'BOSS_2') bossTrackerRef.current.boss2DeathTime = gameTimeRef.current;
+            if (e.type === 'BOSS_3') bossTrackerRef.current.boss3DeathTime = gameTimeRef.current;
             // ---------------------------
             
-            // --- SPLITTER SPAWN LOGIC ---
             if (e.type === 'SPLITTER') {
                 for(let k=0; k<3; k++) {
                    newMinis.push({
@@ -284,7 +294,6 @@ const App: React.FC = () => {
                       flashTime: 0, attackRange: 0, attackPattern: 'BASIC'
                    });
                 }
-                // Slime explosion particles
                 for(let j=0; j<10; j++) {
                      particlesRef.current.push({
                         id: Math.random().toString(), x: e.x, y: e.y, width:0, height:0,
@@ -293,32 +302,31 @@ const App: React.FC = () => {
                      });
                 }
             }
-            // ----------------------------
 
-            // INCREASED EXP VALUES
-            let xpAmount = 100; let xpSize = 12; 
+            // DROPS LOGIC
+            // INCREASED XP VALUES HERE
+            let xpAmount = 300; let xpSize = 12; 
             let heartChance = 0.01; let healAmount = 10;
-            let armorChance = 0.005; let armorAmount = 20; // Default armor chances
+            let armorChance = 0.005; let armorAmount = 20;
 
             if (e.type.includes('BOSS')) { 
-                xpAmount = 15000; xpSize = 24; 
+                xpAmount = 50000; xpSize = 24; 
                 heartChance = 1.0; healAmount = 100;
-                armorChance = 1.0; armorAmount = 100; // Boss drops guaranteed shield
+                armorChance = 1.0; armorAmount = 100;
             } 
             else if (e.type === 'ELITE') { 
-                xpAmount = 2000; xpSize = 16; 
+                xpAmount = 8000; xpSize = 16; 
                 heartChance = 0.15; healAmount = 40;
                 armorChance = 0.1; armorAmount = 50;
             } 
-            else if (e.type === 'EXPLODER') { xpAmount = 300; xpSize = 12; heartChance = 0.02; healAmount = 15; armorChance = 0.02; }
-            else if (e.type === 'SPLITTER') { xpAmount = 400; xpSize = 14; heartChance = 0.05; }
+            else if (e.type === 'EXPLODER') { xpAmount = 1000; xpSize = 12; heartChance = 0.02; healAmount = 15; armorChance = 0.02; }
+            else if (e.type === 'SPLITTER') { xpAmount = 1500; xpSize = 14; heartChance = 0.05; }
             
             gemsRef.current.push({
               id: Math.random().toString(), x: e.x, y: e.y, width: xpSize, height: xpSize,
               amount: xpAmount, color: 'oklch(0.5635 0.2408 260.8178)'
             });
             
-            // Drop Health
             if (Math.random() < heartChance) {
                 healthDropsRef.current.push({
                     id: Math.random().toString(), x: e.x + getRandomRange(-20, 20), y: e.y + getRandomRange(-20, 20),
@@ -326,7 +334,6 @@ const App: React.FC = () => {
                 });
             }
 
-            // Drop Armor (Shield)
             if (Math.random() < armorChance) {
                 armorDropsRef.current.push({
                     id: Math.random().toString(), x: e.x + getRandomRange(-20, 20), y: e.y + getRandomRange(-20, 20),
@@ -335,12 +342,23 @@ const App: React.FC = () => {
             }
         }
         createHitEffect(particlesRef.current, floatingTextsRef.current, e.x, e.y, e.color, 0, true); 
-        if (activeBoss && e.id === activeBoss.id) setActiveBoss(null);
+        
+        if (e.aiType === 'BOSS') {
+            setActiveBosses(prev => prev.filter(b => b.id !== e.id));
+        }
       }
     });
     
-    // Filter dead enemies AND Add new minis
     enemiesRef.current = enemiesRef.current.filter(e => e.hp > 0).concat(newMinis);
+
+    // --- CHECK WIN CONDITION ---
+    // If Triple Boss wave has started, and there are NO Bosses left alive in the enemy array
+    if (bossTrackerRef.current.tripleBossSpawned && !winTriggeredRef.current) {
+        const remainingBosses = enemiesRef.current.filter(e => e.aiType === 'BOSS');
+        if (remainingBosses.length === 0) {
+            handleWin();
+        }
+    }
 
     // 6. Collectibles
     const { nextGems, nextHealth, nextArmor } = updateCollectibles(
@@ -358,18 +376,16 @@ const App: React.FC = () => {
     healthDropsRef.current = nextHealth;
     armorDropsRef.current = nextArmor;
 
-    // 7. Sync & Cleanup
-    if (activeBoss) {
-        const bossRef = enemiesRef.current.find(e => e.id === activeBoss.id);
-        if (bossRef) setActiveBoss({...bossRef}); 
-        else setActiveBoss(null);
+    if (activeBosses.length > 0) {
+        const currentBosses = enemiesRef.current.filter(e => e.aiType === 'BOSS');
+        setActiveBosses(currentBosses);
     }
-    
+
     particlesRef.current = updateParticles(particlesRef.current, dt);
     floatingTextsRef.current = updateFloatingTexts(floatingTextsRef.current, dt);
 
     if (s.hp <= 0) handleGameOver();
-  }, [gameState, activeBoss, takeDamage, handleLevelUp]);
+  }, [gameState, activeBosses, takeDamage, handleLevelUp]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -394,7 +410,7 @@ const App: React.FC = () => {
         offsets: offsets
     });
 
-  }, [stats, activeBoss]);
+  }, [stats, activeBosses]);
 
   const loop = useCallback((time: number) => {
     const deltaTime = time - lastTimeRef.current;
@@ -433,6 +449,15 @@ const App: React.FC = () => {
           onMenu={backToMenu}
         />
       )}
+      
+      {/* NEW VICTORY SCREEN */}
+      {gameState === GameState.WIN && (
+        <VictoryScreen 
+          stats={stats}
+          onRetry={startGame}
+          onMenu={backToMenu}
+        />
+      )}
 
       {showHistory && <HistoryModal history={history} onClose={() => setShowHistory(false)} />}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
@@ -441,7 +466,7 @@ const App: React.FC = () => {
       {gameState === GameState.LEVEL_UP && <LevelUpModal options={levelUpOptions} onSelect={handleBuffSelect} />}
       {gameState === GameState.QUIZ && currentQuestion && selectedBuff && <QuizModal question={currentQuestion} selectedBuff={selectedBuff} onAnswer={handleQuizResult} />}
       
-      {(gameState === GameState.PLAYING || gameState === GameState.LEVEL_UP || gameState === GameState.QUIZ) && <HUD stats={stats} timer={timer} activeBoss={activeBoss} />}
+      {(gameState === GameState.PLAYING || gameState === GameState.LEVEL_UP || gameState === GameState.QUIZ) && <HUD stats={stats} timer={timer} activeBosses={activeBosses} />}
 
       <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="w-full h-full object-contain cursor-crosshair" />
     </div>

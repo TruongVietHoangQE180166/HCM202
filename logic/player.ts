@@ -21,7 +21,7 @@ export const updatePlayerMovement = (
   stats: PlayerStats,
   zone: ZoneState,
   dt: number,
-  activeBoss: Enemy | null
+  activeBosses: Enemy[]
 ) => {
   let dx = 0, dy = 0;
   if (keys['w'] || keys['arrowup']) dy -= 1;
@@ -39,16 +39,18 @@ export const updatePlayerMovement = (
     nextY += (dy / length) * stats.moveSpeed * dt;
   }
 
-  // Boss 2: Black Hole Pull
-  if (activeBoss && activeBoss.type === 'BOSS_2' && activeBoss.attackPattern === 'BLACK_HOLE' && activeBoss.attackState === 'PULLING') {
-      const dist = getDistance(player.x, player.y, activeBoss.x, activeBoss.y);
-      if (dist < 800) {
-          const pullStrength = 300 * (1 - dist / 800) + 50;
-          const angle = Math.atan2(activeBoss.y - player.y, activeBoss.x - player.x);
-          nextX += Math.cos(angle) * pullStrength * dt;
-          nextY += Math.sin(angle) * pullStrength * dt;
+  // Boss 2: Black Hole Pull (Check all active bosses)
+  activeBosses.forEach(boss => {
+      if (boss.type === 'BOSS_2' && boss.attackPattern === 'BLACK_HOLE' && boss.attackState === 'PULLING') {
+          const dist = getDistance(player.x, player.y, boss.x, boss.y);
+          if (dist < 800) {
+              const pullStrength = 300 * (1 - dist / 800) + 50;
+              const angle = Math.atan2(boss.y - player.y, boss.x - player.x);
+              nextX += Math.cos(angle) * pullStrength * dt;
+              nextY += Math.sin(angle) * pullStrength * dt;
+          }
       }
-  }
+  });
 
   // Zone Constraint
   if (zone.active) {
@@ -69,12 +71,13 @@ export const updateZoneLogic = (
   player: PlayerRef,
   floatingTexts: FloatingText[],
   dt: number,
-  activeBoss: Enemy | null
+  activeBosses: Enemy[]
 ) => {
-  // Trigger Zone if there is an active boss AND we haven't triggered for this boss ID yet
-  if (activeBoss && zone.lastBossId !== activeBoss.id && !zone.active) {
+  // Trigger Zone if there are active bosses AND we haven't triggered for the first boss ID yet (simple check)
+  // If multiple spawn at once, this will trigger using the ID of the first one, essentially triggering one zone for the wave.
+  if (activeBosses.length > 0 && zone.lastBossId !== activeBosses[0].id && !zone.active) {
     zone.active = true;
-    zone.lastBossId = activeBoss.id;
+    zone.lastBossId = activeBosses[0].id;
     zone.radius = 1200;
     zone.center = { x: player.x, y: player.y };
     floatingTexts.push({

@@ -1,5 +1,5 @@
 
-import { PlayerStats, Buff, Particle, FloatingText } from '../types';
+import { PlayerStats, Buff, Particle, FloatingText, Rarity } from '../types';
 import { BUFFS } from '../constants';
 import { createHitEffect, createShieldHitEffect } from './particles';
 
@@ -40,21 +40,76 @@ export const calculatePlayerDamage = (
     return newStats;
 };
 
-// Generates 3 unique random buff options
+// --- WEIGHTED RARITY LOGIC ---
+const RARITY_WEIGHTS: Record<Rarity, number> = {
+    [Rarity.COMMON]: 40,
+    [Rarity.UNCOMMON]: 25,
+    [Rarity.RARE]: 15,
+    [Rarity.EPIC]: 10,
+    [Rarity.LEGENDARY]: 6,
+    [Rarity.MYTHIC]: 3,
+    [Rarity.GODLY]: 1
+};
+
+const getRandomRarity = (): Rarity => {
+    const totalWeight = Object.values(RARITY_WEIGHTS).reduce((sum, w) => sum + w, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (const [rarity, weight] of Object.entries(RARITY_WEIGHTS)) {
+        random -= weight;
+        if (random <= 0) {
+            return rarity as Rarity;
+        }
+    }
+    return Rarity.COMMON; // Fallback
+};
+
+// Generates 3 unique random buff options with Weighted Probabilities
 export const generateLevelUpOptions = (): Buff[] => {
     const distinctOptions: Buff[] = [];
-    const usedIndices = new Set<number>();
+    const usedIds = new Set<string>();
     
-    // Safety break to prevent infinite loops if BUFFS is small
     let attempts = 0;
-    while (distinctOptions.length < 3 && usedIndices.size < BUFFS.length && attempts < 100) {
-       const idx = Math.floor(Math.random() * BUFFS.length);
-       if (!usedIndices.has(idx)) {
-         usedIndices.add(idx);
-         distinctOptions.push(BUFFS[idx]);
-       }
+    while (distinctOptions.length < 3 && attempts < 50) {
        attempts++;
+       
+       // 1. Pick a target rarity based on weights
+       const targetRarity = getRandomRarity();
+       
+       // 2. Filter available buffs by this rarity
+       const pool = BUFFS.filter(b => b.rarity === targetRarity && !usedIds.has(b.id));
+       
+       // 3. If pool is empty (e.g. rolled GODLY but all GODLYs taken), try to pick ANY available buff
+       if (pool.length === 0) {
+           const backupPool = BUFFS.filter(b => !usedIds.has(b.id));
+           if (backupPool.length > 0) {
+               const randomBuff = backupPool[Math.floor(Math.random() * backupPool.length)];
+               distinctOptions.push(randomBuff);
+               usedIds.add(randomBuff.id);
+           }
+           continue;
+       }
+
+       // 4. Pick random from the rarity pool
+       const selected = pool[Math.floor(Math.random() * pool.length)];
+       distinctOptions.push(selected);
+       usedIds.add(selected.id);
     }
+    
+    // Fallback: If we still don't have 3 options (extremely rare edge case), fill with duplicates allowed or randoms
+    while(distinctOptions.length < 3) {
+         const randomBuff = BUFFS[Math.floor(Math.random() * BUFFS.length)];
+         // Allow duplicates only if necessary to prevent crash, but UI handles distinct mapping usually.
+         // Better to just push unique if possible, but for safety:
+         if (!usedIds.has(randomBuff.id)) {
+            distinctOptions.push(randomBuff);
+            usedIds.add(randomBuff.id);
+         } else {
+             // If we really ran out of unique buffs, break to avoid infinite loop
+             break; 
+         }
+    }
+
     return distinctOptions;
 };
 

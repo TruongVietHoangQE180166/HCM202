@@ -126,29 +126,14 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
           });
       }
 
-      // 3. BOSS 1: SLAM TELEGRAPH (New)
+      // 3. BOSS 1: SLAM TELEGRAPH
       if (e.type === 'BOSS_1' && e.attackPattern === 'SLAM' && e.attackState === 'WARN') {
           const SLAM_RADIUS = 300;
-          // Calculate progress based on timer (approx 1.5s warning time)
           const progress = Math.min(1, (e.stateTimer || 0) / 1.5);
-          
-          ctx.save();
-          ctx.translate(e.x, e.y);
-          
-          // Outer boundary
-          ctx.beginPath(); 
-          ctx.arc(0, 0, SLAM_RADIUS, 0, Math.PI * 2);
-          ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)'; 
-          ctx.lineWidth = 3; 
-          ctx.setLineDash([15, 10]); 
-          ctx.stroke();
-
-          // Filling circle
-          ctx.beginPath(); 
-          ctx.arc(0, 0, SLAM_RADIUS * progress, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.3)'; 
-          ctx.fill();
-          
+          ctx.save(); ctx.translate(e.x, e.y);
+          ctx.beginPath(); ctx.arc(0, 0, SLAM_RADIUS, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)'; ctx.lineWidth = 3; ctx.setLineDash([15, 10]); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, 0, SLAM_RADIUS * progress, 0, Math.PI * 2); ctx.fillStyle = 'rgba(239, 68, 68, 0.3)'; ctx.fill();
           ctx.restore();
       }
 
@@ -159,7 +144,6 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
           ctx.rotate(gameTime * 2);
           const size = e.attackState === 'PULLING' ? 300 : 150;
           
-          // Suction lines
           ctx.beginPath();
           for(let i=0; i<8; i++) {
               ctx.rotate(Math.PI/4);
@@ -170,20 +154,10 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          // Event Horizon
           ctx.beginPath(); ctx.arc(0, 0, 60, 0, Math.PI*2);
           ctx.fillStyle = '#000'; ctx.fill();
           ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 2; ctx.stroke();
           
-          ctx.restore();
-      }
-
-      // 5. ELITE STOMP
-      if (e.type === 'ELITE' && e.attackPattern === 'STOMP' && e.attackState === 'WARN') {
-          const progress = Math.min(1, (e.stateTimer || 0) / 1.2);
-          ctx.save(); ctx.translate(e.x, e.y);
-          ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI*2); ctx.strokeStyle = 'rgba(220, 38, 38, 0.4)'; ctx.stroke();
-          ctx.beginPath(); ctx.arc(0, 0, 150 * progress, 0, Math.PI*2); ctx.fillStyle = 'rgba(220, 38, 38, 0.2)'; ctx.fill();
           ctx.restore();
       }
       
@@ -203,6 +177,39 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
           }
           ctx.stroke(); ctx.restore();
       }
+
+      // BOSS 3: EXECUTION DASH
+      if (e.type === 'BOSS_3' && e.attackPattern === 'DASH' && e.attackState === 'WARN') {
+          const tx = e.dashTarget?.x || player.x;
+          const ty = e.dashTarget?.y || player.y;
+          const progress = Math.min(1, (e.stateTimer || 0) / 0.8);
+          
+          ctx.save();
+          // Draw Line
+          ctx.beginPath();
+          ctx.moveTo(e.x, e.y);
+          ctx.lineTo(tx, ty);
+          ctx.strokeStyle = `rgba(220, 38, 38, ${0.2 + progress * 0.6})`;
+          ctx.lineWidth = 2 + progress * 20; // Expands before dashing
+          ctx.stroke();
+          
+          // Crosshair at target
+          ctx.translate(tx, ty);
+          ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(20, 0); ctx.moveTo(0, -20); ctx.lineTo(0, 20); ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, 0, 30 * (1-progress), 0, Math.PI*2); ctx.stroke();
+          
+          ctx.restore();
+      }
+
+      // 5. ELITE STOMP
+      if (e.type === 'ELITE' && e.attackPattern === 'STOMP' && e.attackState === 'WARN') {
+          const progress = Math.min(1, (e.stateTimer || 0) / 1.2);
+          ctx.save(); ctx.translate(e.x, e.y);
+          ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI*2); ctx.strokeStyle = 'rgba(220, 38, 38, 0.4)'; ctx.stroke();
+          ctx.beginPath(); ctx.arc(0, 0, 150 * progress, 0, Math.PI*2); ctx.fillStyle = 'rgba(220, 38, 38, 0.2)'; ctx.fill();
+          ctx.restore();
+      }
     });
 
     // --- ENEMY RENDERING (LAYER 2: BODIES) ---
@@ -211,7 +218,6 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
       ctx.translate(e.x, e.y);
 
       if (e.type === 'SPLITTER' || e.type === 'MINI') {
-           // Slime Wobble
            const wobbleX = 1 + Math.sin(gameTime * 10) * 0.1;
            const wobbleY = 1 + Math.cos(gameTime * 10) * 0.1;
            ctx.scale(wobbleX, wobbleY);
@@ -224,7 +230,7 @@ export const renderGame = (ctx: CanvasRenderingContext2D, state: RenderState) =>
          ctx.fillStyle = e.flashTime > 0 ? '#fff' : e.color;
       }
       
-      if (e.aiType === 'DASHER' && e.attackState === 'DASHING') ctx.fillStyle = '#fff';
+      if ((e.aiType === 'DASHER' || e.type === 'BOSS_3') && e.attackState === 'DASHING') ctx.fillStyle = '#fff';
 
       // Draw Body
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
