@@ -135,6 +135,11 @@ export const handleEnemySpawning = (
       setActiveBosses(newBosses);
       return; 
   }
+
+  // === STOP SPAWNING IF BOSS IS ALIVE ===
+  if (enemies.some(e => e.aiType === 'BOSS')) {
+      return;
+  }
   
   // === SPAWN CLUSTERS ===
   // Tăng nhẹ số lượng quái spawn mỗi đợt

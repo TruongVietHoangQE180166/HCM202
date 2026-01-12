@@ -2,9 +2,9 @@
 import { PlayerStats } from '../types';
 
 export const INITIAL_STATS: PlayerStats = {
-  maxHP: 500, 
-  hp: 500,
-  hpRegen: 1,
+  maxHP: 50000, 
+  hp: 50000,
+  hpRegen: 500,
 
   maxArmor: 200, 
   currentArmor: 200,
@@ -14,7 +14,7 @@ export const INITIAL_STATS: PlayerStats = {
   moveSpeed: 300,
 
   // --- GUN STATS ---
-  gunDamageMult: 1.0, 
+  gunDamageMult: 20.0, 
   gunCooldownMult: 1.0, 
   gunAmount: 1,
   gunPierce: 0,

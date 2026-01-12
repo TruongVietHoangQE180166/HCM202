@@ -14,10 +14,12 @@ import QuizModal from './components/QuizModal';
 import LoadingScreen from './components/LoadingScreen';
 import MainMenu from './components/MainMenu';
 import GameOverScreen from './components/GameOverScreen';
-import VictoryScreen from './components/VictoryScreen'; // NEW IMPORT
+import VictoryScreen from './components/VictoryScreen';
 import HistoryModal from './components/HistoryModal';
 import TutorialModal from './components/TutorialModal';
 import PolicyModal from './components/PolicyModal';
+import NameInputModal from './components/NameInputModal'; // New
+import LeaderboardModal from './components/LeaderboardModal'; // New
 
 // Hooks & Logic
 import { useInput } from './hooks/useInput';
@@ -31,19 +33,23 @@ import { handleEnemySpawning, updateEnemies } from './logic/enemies';
 import { updateProjectiles } from './logic/projectiles';
 import { updateCollectibles } from './logic/collectibles';
 import { renderGame } from './logic/renderer';
+import { submitScoreToSupabase } from './logic/supabaseClient'; // New
 
 const App: React.FC = () => {
   // --- STATE ---
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
   const [timer, setTimer] = useState(0);
   const [stats, setStats] = useState<PlayerStats>(INITIAL_STATS);
-  // CHANGED: activeBoss (single) -> activeBosses (array)
   const [activeBosses, setActiveBosses] = useState<Enemy[]>([]);
+  const [playerName, setPlayerName] = useState<string>('USER'); // State for player name
   
   // Menu UI States
   const [showHistory, setShowHistory] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showPolicy, setShowPolicy] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false); // Leaderboard Modal
+  const [showNameInput, setShowNameInput] = useState(false); // Name Input Modal
+  
   const [history, setHistory] = useState<GameHistory[]>([]);
   const [loadingProgress, setLoadingProgress] = useState(0);
 
@@ -83,7 +89,7 @@ const App: React.FC = () => {
     boss1DeathTime: null as number | null,
     boss2Spawned: false, 
     boss2DeathTime: null as number | null,
-    boss3Spawned: false,
+    boss3Spawned: false, 
     boss3DeathTime: null as number | null,
     tripleBossSpawned: false 
   });
@@ -106,6 +112,14 @@ const App: React.FC = () => {
   const handleSaveHistory = (finalStats: PlayerStats, time: number) => {
     const updated = saveGameHistory(history, finalStats, time);
     setHistory(updated);
+
+    // --- SUBMIT TO SUPABASE ---
+    submitScoreToSupabase({
+        name: playerName,
+        time_survived: Math.floor(time),
+        level: finalStats.level,
+        kills: finalStats.kills
+    });
   };
 
   const startLoading = (nextState: GameState, delay = 2000) => {
@@ -125,6 +139,16 @@ const App: React.FC = () => {
       clearInterval(interval);
       setGameState(nextState);
     }, delay);
+  };
+
+  const handleStartRequest = () => {
+    setShowNameInput(true);
+  };
+
+  const handleNameConfirm = (name: string) => {
+    setPlayerName(name);
+    setShowNameInput(false);
+    startGame();
   };
 
   const startGame = () => {
@@ -306,7 +330,6 @@ const App: React.FC = () => {
             }
 
             // DROPS LOGIC
-            // INCREASED XP VALUES HERE
             let xpAmount = 300; let xpSize = 12; 
             let heartChance = 0.01; let healAmount = 10;
             let armorChance = 0.005; let armorAmount = 20;
@@ -354,7 +377,6 @@ const App: React.FC = () => {
     enemiesRef.current = enemiesRef.current.filter(e => e.hp > 0).concat(newMinis);
 
     // --- CHECK WIN CONDITION ---
-    // If Triple Boss wave has started, and there are NO Bosses left alive in the enemy array
     if (bossTrackerRef.current.tripleBossSpawned && !winTriggeredRef.current) {
         const remainingBosses = enemiesRef.current.filter(e => e.aiType === 'BOSS');
         if (remainingBosses.length === 0) {
@@ -437,10 +459,11 @@ const App: React.FC = () => {
 
       {gameState === GameState.MENU && (
         <MainMenu 
-          onStart={startGame}
+          onStart={handleStartRequest} // Changed to open name input modal
           onShowHistory={() => setShowHistory(true)}
           onShowTutorial={() => setShowTutorial(true)}
           onShowPolicy={() => setShowPolicy(true)}
+          onShowLeaderboard={() => setShowLeaderboard(true)} // New
         />
       )}
 
@@ -452,7 +475,6 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* NEW VICTORY SCREEN */}
       {gameState === GameState.WIN && (
         <VictoryScreen 
           stats={stats}
@@ -464,6 +486,10 @@ const App: React.FC = () => {
       {showHistory && <HistoryModal history={history} onClose={() => setShowHistory(false)} />}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
       {showPolicy && <PolicyModal onClose={() => setShowPolicy(false)} />}
+      
+      {/* New Modals */}
+      {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
+      {showNameInput && <NameInputModal onConfirm={handleNameConfirm} onCancel={() => setShowNameInput(false)} />}
 
       {gameState === GameState.LEVEL_UP && <LevelUpModal options={levelUpOptions} onSelect={handleBuffSelect} />}
       {gameState === GameState.QUIZ && currentQuestion && selectedBuff && <QuizModal question={currentQuestion} selectedBuff={selectedBuff} onAnswer={handleQuizResult} />}

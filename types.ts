@@ -27,6 +27,15 @@ export interface GameHistory {
   timeSurvived: string;
 }
 
+export interface LeaderboardEntry {
+  id: number;
+  name: string;
+  time_survived: number; // seconds
+  level: number;
+  kills: number;
+  created_at?: string;
+}
+
 export interface Buff {
   id: string;
   name: string;

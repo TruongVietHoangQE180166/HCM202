@@ -1,15 +1,16 @@
 
 import React from 'react';
-import { Play, BarChart2, BookOpen, ShieldCheck, Zap } from 'lucide-react';
+import { Play, BarChart2, BookOpen, ShieldCheck, Zap, Trophy } from 'lucide-react';
 
 interface MainMenuProps {
   onStart: () => void;
   onShowHistory: () => void;
   onShowTutorial: () => void;
   onShowPolicy: () => void;
+  onShowLeaderboard: () => void; // New prop
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onStart, onShowHistory, onShowTutorial, onShowPolicy }) => {
+const MainMenu: React.FC<MainMenuProps> = ({ onStart, onShowHistory, onShowTutorial, onShowPolicy, onShowLeaderboard }) => {
   return (
     <div className="absolute inset-0 z-50 overflow-hidden bg-[#f4f4f5] flex items-center justify-center font-sans">
       {/* Abstract Background Elements */}
@@ -24,7 +25,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onShowHistory, onShowTutor
       <div className="relative z-10 flex flex-col items-center w-full max-w-4xl px-4">
         
         {/* HERO TITLE */}
-        <div className="mb-16 text-center transform hover:scale-105 transition-transform duration-500">
+        <div className="mb-12 text-center transform hover:scale-105 transition-transform duration-500">
            <div className="inline-block bg-black text-white px-4 py-1 mb-4 border-2 border-black neo-shadow-sm transform -rotate-2">
               <span className="font-mono font-bold tracking-[0.3em] text-xs md:text-sm">PHIÊN BẢN CÁCH MẠNG 2.1</span>
            </div>
@@ -59,26 +60,38 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onShowHistory, onShowTutor
 
           {/* SIDE BUTTONS */}
           <div className="col-span-1 md:col-span-4 flex flex-col gap-4 h-40">
+             <div className="flex-1 flex gap-4">
+                 <button 
+                   onClick={onShowHistory}
+                   className="flex-1 bg-cyan-300 text-black border-4 border-black neo-shadow hover:bg-cyan-200 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex flex-col items-center justify-center gap-1 font-black uppercase text-sm"
+                   title="Lịch sử"
+                 >
+                   <BarChart2 size={20} strokeWidth={3} /> Lịch Sử
+                 </button>
+                 <button 
+                   onClick={onShowTutorial}
+                   className="flex-1 bg-emerald-300 text-black border-4 border-black neo-shadow hover:bg-emerald-200 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex flex-col items-center justify-center gap-1 font-black uppercase text-sm"
+                   title="Hướng dẫn"
+                 >
+                   <BookOpen size={20} strokeWidth={3} /> Hướng Dẫn
+                 </button>
+             </div>
+             
+             {/* LEADERBOARD BUTTON */}
              <button 
-               onClick={onShowHistory}
-               className="flex-1 bg-white text-black border-4 border-black neo-shadow hover:bg-yellow-100 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center justify-center gap-3 font-black uppercase text-lg"
+               onClick={onShowLeaderboard}
+               className="flex-1 bg-yellow-400 text-black border-4 border-black neo-shadow hover:bg-yellow-300 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center justify-center gap-3 font-black uppercase text-lg"
              >
-               <BarChart2 size={24} strokeWidth={3} /> Lịch Sử
-             </button>
-             <button 
-               onClick={onShowTutorial}
-               className="flex-1 bg-white text-black border-4 border-black neo-shadow hover:bg-blue-100 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center justify-center gap-3 font-black uppercase text-lg"
-             >
-               <BookOpen size={24} strokeWidth={3} /> Hướng Dẫn
+               <Trophy size={24} strokeWidth={3} /> Bảng Xếp Hạng
              </button>
           </div>
 
           {/* FOOTER BUTTONS */}
           <button 
             onClick={onShowPolicy}
-            className="col-span-1 md:col-span-12 py-3 bg-gray-200 text-gray-600 font-mono font-bold text-xs border-2 border-transparent hover:border-gray-400 hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
+            className="col-span-1 md:col-span-12 py-3 bg-white text-black font-black text-sm border-4 border-black neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none hover:bg-pink-200 transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
           >
-            <ShieldCheck size={14} /> CAM KẾT SỬ DỤNG AI & BẢO MẬT DỮ LIỆU
+            <ShieldCheck size={18} strokeWidth={2.5} /> CAM KẾT SỬ DỤNG AI & BẢO MẬT DỮ LIỆU
           </button>
 
         </div>
